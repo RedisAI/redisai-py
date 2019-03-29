@@ -1,5 +1,6 @@
 import six
 
+
 def to_string(s):
     if isinstance(s, six.string_types):
         return s
