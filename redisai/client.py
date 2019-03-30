@@ -1,4 +1,16 @@
 from redis import StrictRedis
+from ._util import to_string
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    from typing import Union, Any, AnyStr, ByteString, Collection
+except ImportError:
+    pass
+
 
 DEVICE_CPU = 'cpu'
 DEVICE_GPU = 'gpu'
@@ -22,7 +34,10 @@ class Tensor(object):
 
     ARGNAME = 'VALUES'
 
-    def __init__(self, ttype, shape, value):
+    def __init__(self,
+                 ttype,  # type: AnyStr
+                 shape,  # type: Collection[int]
+                 value):
         """
         Declare a tensor suitable for passing to tensorset
         :param ttype: The type the values should be stored as.
@@ -57,6 +72,7 @@ class Tensor(object):
 
 class ScalarTensor(Tensor):
     def __init__(self, dtype, *values):
+        # type: (ScalarTensor, AnyStr, Any) -> None
         """
         Declare a tensor with a bunch of scalar values. This can be used
         to 'batch-load' several tensors.
@@ -69,10 +85,13 @@ class ScalarTensor(Tensor):
 
 
 class BlobTensor(Tensor):
-
     ARGNAME = 'BLOB'
 
-    def __init__(self, ttype, shape, *blobs):
+    def __init__(self,
+                 ttype,
+                 shape,  # type: Collection[int]
+                 *blobs  # type: Union[BlobTensor, ByteString]
+                 ):
         """
         Create a tensor from a binary blob
         :param ttype: The datatype, one of Tensor.FLOAT, Tensor.DOUBLE, etc.
@@ -86,13 +105,55 @@ class BlobTensor(Tensor):
                     b = b.value[0]
                 blobarr += b
             size = len(blobs)
-            blobs = blobarr
+            blobs = bytes(blobarr)
         else:
-            blobs = blobs[0]
+            blobs = bytes(blobs[0])
             size = 1
 
         super(BlobTensor, self).__init__(ttype, shape, blobs)
         self._size = size
+
+    @classmethod
+    def from_numpy(cls, *nparrs):
+        # type: (type, np.array) -> BlobTensor
+        blobs = []
+        for arr in nparrs:
+            blobs.append(arr.data)
+        return cls(
+            BlobTensor._from_numpy_type(nparrs[0].dtype),
+            nparrs[0].shape, *blobs)
+
+    @property
+    def blob(self):
+        return self.value[0]
+
+    def to_numpy(self):
+        # type: () -> np.array
+        a = np.frombuffer(self.value[0], dtype=self._to_numpy_type(self.type))
+        return a.reshape(self.shape)
+
+    @staticmethod
+    def _to_numpy_type(t):
+        t = t.lower()
+        mm = {
+            'float': 'float32',
+            'double': 'float64'
+        }
+        if t in mm:
+            return mm[t]
+        return t
+
+    @staticmethod
+    def _from_numpy_type(t):
+        t = str(t).lower()
+        mm = {
+            'float32': 'float',
+            'float64': 'double',
+            'float_': 'double'
+        }
+        if t in mm:
+            return mm[t]
+        return t
 
 
 class Client(StrictRedis):
@@ -117,27 +178,36 @@ class Client(StrictRedis):
         return self.execute_command(*args)
 
     def tensorset(self, key, tensor):
+        # type: (Client, AnyStr, Union[Tensor, np.ndarray]) -> Any
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
         :param tensor: a `Tensor` object
-        :return:
         """
+        if np and isinstance(tensor, np.ndarray):
+            tensor = BlobTensor.from_numpy(tensor)
         args = ['AI.TENSORSET', key, tensor.type, tensor.size]
         args += tensor.shape
         args += [tensor.ARGNAME]
         args += tensor.value
-        print args
         return self.execute_command(*args)
 
     def tensorget(self, key, astype=Tensor, meta_only=False):
+        """
+        Retrieve the value of a tensor from the server
+        :param key: the name of the tensor
+        :param astype: the resultant tensor type
+        :param meta_only: if true, then the value is not retrieved,
+            only the shape and the type
+        :return: an instance of astype
+        """
         argname = 'META' if meta_only else astype.ARGNAME
         res = self.execute_command('AI.TENSORGET', key, argname)
+        dtype, shape = to_string(res[0]), res[1]
         if meta_only:
-            return astype(res[0], res[1], [])
+            return astype(dtype, shape, [])
         else:
-            dtype, shape, value = res
-            return astype(dtype, shape, value)
+            return astype(dtype, shape, res[2])
 
     def scriptset(self, name, device, script):
         return self.execute_command('AI.SCRIPTSET', name, device, script)
@@ -145,8 +215,8 @@ class Client(StrictRedis):
     def scriptget(self, name):
         r = self.execute_command('AI.SCRIPTGET', name)
         return {
-            'device': r[0],
-            'script': r[1]
+            'device': to_string(r[0]),
+            'script': to_string(r[1])
         }
 
     def scriptrun(self, name, function, inputs, outputs):
