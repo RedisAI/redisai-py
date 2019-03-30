@@ -1,3 +1,4 @@
+from enum import Enum
 from redis import StrictRedis
 from ._util import to_string
 
@@ -12,35 +13,44 @@ except ImportError:
     pass
 
 
-DEVICE_CPU = 'cpu'
-DEVICE_GPU = 'gpu'
+class Device(Enum):
+    cpu = 'cpu'
+    gpu = 'gpu'
 
-BACKEND_TF = 'tf'
-BACKEND_TORCH = 'torch'
-BACKEND_ONNX = 'ort'
+
+class Backend(Enum):
+    tf = 'tf'
+    torch = 'torch'
+    onnx = 'ort'
+
+
+class DType(Enum):
+    float = 'float'
+    double = 'double'
+    int8 = 'int8'
+    int16 = 'int16'
+    int32 = 'int32'
+    int64 = 'int64'
+    uint8 = 'uint8'
+    uint16 = 'uint16'
+    uint32 = 'uint32'
+    uint64 = 'uint64'
+
+    # aliases
+    float32 = 'float'
+    float64 = 'double'
 
 
 class Tensor(object):
-    FLOAT = 'float'
-    DOUBLE = 'double'
-    INT8 = 'int8'
-    INT16 = 'int16'
-    INT32 = 'int32'
-    INT64 = 'int64'
-    UINT8 = 'uint8'
-    UINT16 = 'uint16'
-    UINT32 = 'uint32'
-    UINT64 = 'uint64'
-
     ARGNAME = 'VALUES'
 
     def __init__(self,
-                 ttype,  # type: AnyStr
+                 dtype,  # type: DType
                  shape,  # type: Collection[int]
                  value):
         """
         Declare a tensor suitable for passing to tensorset
-        :param ttype: The type the values should be stored as.
+        :param dtype: The type the values should be stored as.
             This can be one of Tensor.FLOAT, tensor.DOUBLE, etc.
         :param shape: An array describing the shape of the tensor. For an
             image 250x250 with three channels, this would be [250, 250, 3]
@@ -51,7 +61,7 @@ class Tensor(object):
             is correct. Your application must ensure that the ordering
             is always consistent.
         """
-        self.type = ttype
+        self.type = dtype
         self.shape = shape
         self.value = value
         self._size = 1
@@ -72,7 +82,7 @@ class Tensor(object):
 
 class ScalarTensor(Tensor):
     def __init__(self, dtype, *values):
-        # type: (ScalarTensor, AnyStr, Any) -> None
+        # type: (ScalarTensor, DType, Any) -> None
         """
         Declare a tensor with a bunch of scalar values. This can be used
         to 'batch-load' several tensors.
@@ -88,13 +98,13 @@ class BlobTensor(Tensor):
     ARGNAME = 'BLOB'
 
     def __init__(self,
-                 ttype,
+                 dtype,
                  shape,  # type: Collection[int]
                  *blobs  # type: Union[BlobTensor, ByteString]
                  ):
         """
         Create a tensor from a binary blob
-        :param ttype: The datatype, one of Tensor.FLOAT, Tensor.DOUBLE, etc.
+        :param dtype: The datatype, one of Tensor.FLOAT, Tensor.DOUBLE, etc.
         :param shape: An array
         :param blobs: One or more blobs to assign to the tensor.
         """
@@ -110,7 +120,7 @@ class BlobTensor(Tensor):
             blobs = bytes(blobs[0])
             size = 1
 
-        super(BlobTensor, self).__init__(ttype, shape, blobs)
+        super(BlobTensor, self).__init__(dtype, shape, blobs)
         self._size = size
 
     @classmethod
@@ -119,9 +129,8 @@ class BlobTensor(Tensor):
         blobs = []
         for arr in nparrs:
             blobs.append(arr.data)
-        return cls(
-            BlobTensor._from_numpy_type(nparrs[0].dtype),
-            nparrs[0].shape, *blobs)
+        dt = DType.__members__[str(nparrs[0].dtype)]
+        return cls(dt, nparrs[0].shape, *blobs)
 
     @property
     def blob(self):
@@ -143,22 +152,17 @@ class BlobTensor(Tensor):
             return mm[t]
         return t
 
-    @staticmethod
-    def _from_numpy_type(t):
-        t = str(t).lower()
-        mm = {
-            'float32': 'float',
-            'float64': 'double',
-            'float_': 'double'
-        }
-        if t in mm:
-            return mm[t]
-        return t
-
 
 class Client(StrictRedis):
-    def modelset(self, name, backend, device, inputs, outputs, data):
-        args = ['AI.MODELSET', name, backend, device, 'INPUTS']
+    def modelset(self,
+                 name,  # type: AnyStr
+                 backend,  # type: Backend
+                 device,  # type: Device
+                 inputs,  # type: Collection[AnyStr]
+                 outputs,  # type: Collection[AnyStr]
+                 data  # type: ByteString
+                 ):
+        args = ['AI.MODELSET', name, backend.value, device.value, 'INPUTS']
         args += inputs
         args += ['OUTPUTS'] + outputs
         args += [data]
@@ -167,8 +171,8 @@ class Client(StrictRedis):
     def modelget(self, name):
         rv = self.execute_command('AI.MODELGET', name)
         return {
-            'backend': rv[0],
-            'device': rv[1],
+            'backend': Backend(rv[0]),
+            'device': Device(rv[1]),
             'data': rv[2]
         }
 
@@ -186,7 +190,7 @@ class Client(StrictRedis):
         """
         if np and isinstance(tensor, np.ndarray):
             tensor = BlobTensor.from_numpy(tensor)
-        args = ['AI.TENSORSET', key, tensor.type, tensor.size]
+        args = ['AI.TENSORSET', key, tensor.type.value, tensor.size]
         args += tensor.shape
         args += [tensor.ARGNAME]
         args += tensor.value
@@ -210,7 +214,7 @@ class Client(StrictRedis):
             return astype(dtype, shape, res[2])
 
     def scriptset(self, name, device, script):
-        return self.execute_command('AI.SCRIPTSET', name, device, script)
+        return self.execute_command('AI.SCRIPTSET', name, device.value, script)
 
     def scriptget(self, name):
         r = self.execute_command('AI.SCRIPTGET', name)
