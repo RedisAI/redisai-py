@@ -1,6 +1,7 @@
 from enum import Enum
 from redis import StrictRedis
 from ._util import to_string
+import six
 
 try:
     import numpy as np
@@ -8,7 +9,7 @@ except ImportError:
     np = None
 
 try:
-    from typing import Union, Any, AnyStr, ByteString, Collection
+    from typing import Union, Any, AnyStr, ByteString, Collection, Type
 except ImportError:
     pass
 
@@ -39,6 +40,12 @@ class DType(Enum):
     # aliases
     float32 = 'float'
     float64 = 'double'
+
+
+def _str_or_strlist(v):
+    if isinstance(v, six.string_types):
+        return [v]
+    return v
 
 
 class Tensor(object):
@@ -158,13 +165,13 @@ class Client(StrictRedis):
                  name,  # type: AnyStr
                  backend,  # type: Backend
                  device,  # type: Device
-                 inputs,  # type: Collection[AnyStr]
-                 outputs,  # type: Collection[AnyStr]
+                 input,  # type: Union[AnyStr|Collection[AnyStr]]
+                 output,  # type: Union[AnyStr|Collection[AnyStr]]
                  data  # type: ByteString
                  ):
         args = ['AI.MODELSET', name, backend.value, device.value, 'INPUTS']
-        args += inputs
-        args += ['OUTPUTS'] + outputs
+        args += _str_or_strlist(input)
+        args += ['OUTPUTS'] + _str_or_strlist(output)
         args += [data]
         return self.execute_command(*args)
 
@@ -176,9 +183,14 @@ class Client(StrictRedis):
             'data': rv[2]
         }
 
-    def modelrun(self, name, inputs, outputs):
+    def modelrun(self,
+                 name,
+                 input,  # type: Union[AnyStr|Collection[AnyStr]]
+                 output  # type: Union[AnyStr|Collection[AnyStr]]
+                 ):
         args = ['AI.MODELRUN', name]
-        args += ['INPUTS'] + inputs + ['OUTPUTS'] + outputs
+        args += ['INPUTS'] + _str_or_strlist(input)
+        args += ['OUTPUTS'] + _str_or_strlist(output)
         return self.execute_command(*args)
 
     def tensorset(self, key, tensor):
@@ -196,22 +208,23 @@ class Client(StrictRedis):
         args += tensor.value
         return self.execute_command(*args)
 
-    def tensorget(self, key, astype=Tensor, meta_only=False):
+    def tensorget(self, key, as_type=Tensor, meta_only=False):
+        # type: (AnyStr, Type[Tensor], bool) -> Tensor
         """
         Retrieve the value of a tensor from the server
         :param key: the name of the tensor
-        :param astype: the resultant tensor type
+        :param as_type: the resultant tensor type
         :param meta_only: if true, then the value is not retrieved,
             only the shape and the type
-        :return: an instance of astype
+        :return: an instance of as_type
         """
-        argname = 'META' if meta_only else astype.ARGNAME
+        argname = 'META' if meta_only else as_type.ARGNAME
         res = self.execute_command('AI.TENSORGET', key, argname)
         dtype, shape = to_string(res[0]), res[1]
         if meta_only:
-            return astype(dtype, shape, [])
+            return as_type(dtype, shape, [])
         else:
-            return astype(dtype, shape, res[2])
+            return as_type(dtype, shape, res[2])
 
     def scriptset(self, name, device, script):
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)
@@ -223,9 +236,14 @@ class Client(StrictRedis):
             'script': to_string(r[1])
         }
 
-    def scriptrun(self, name, function, inputs, outputs):
+    def scriptrun(self,
+                  name,
+                  function,  # type: AnyStr
+                  input,  # type: Union[AnyStr|Collection[AnyStr]]
+                  output  # type: Union[AnyStr|Collection[AnyStr]]
+                  ):
         args = ['AI.SCRIPTRUN', name, function, 'INPUTS']
-        args += inputs
+        args += _str_or_strlist(input)
         args += ['OUTPUTS']
-        args += outputs
+        args += _str_or_strlist(output)
         return self.execute_command(*args)
