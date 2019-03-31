@@ -37,7 +37,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            REDIS_PORT=6379 python test/test.py 
+            REDIS_PORT=6379 python redisai/test.py 
             
       - store_artifacts:
           path: test-reports
