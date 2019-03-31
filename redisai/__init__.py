@@ -1,3 +1,3 @@
-from .client import Client, Type
-
-
+from .client import (
+    Client, Tensor, ScalarTensor, BlobTensor, DType, Device, Backend
+)
