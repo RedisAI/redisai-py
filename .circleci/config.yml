@@ -37,8 +37,6 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            REDIS_PORT=6379 coverage run redisai/test.py
-            codecov
             
       - store_artifacts:
           path: test-reports
