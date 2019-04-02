@@ -47,6 +47,17 @@ def _str_or_strlist(v):
         return [v]
     return v
 
+def _convert_to_num(dt, arr):
+    for ix in six.moves.range(len(arr)):
+        obj = arr[ix]
+        if isinstance(obj, list):
+            _convert_to_num(obj)
+        else:
+            if dt in (DType.float, DType.double):
+                arr[ix] = float(obj)
+            else:
+                arr[ix] = int(obj)
+
 
 class Tensor(object):
     ARGNAME = 'VALUES'
@@ -85,6 +96,13 @@ class Tensor(object):
             s=self.shape,
             t=self.type,
             id=id(self))
+
+    @classmethod
+    def from_resp(cls, dtype, shape, value):
+        # recurse value, replacing each element of b'' with the
+        # appropriate element
+        _convert_to_num(dtype, value)
+        return cls(dtype, shape, value)
 
 
 class ScalarTensor(Tensor):
@@ -159,6 +177,10 @@ class BlobTensor(Tensor):
             return mm[t]
         return t
 
+    @classmethod
+    def from_resp(cls, dtype, shape, value):
+        return cls(dtype, shape, value)
+
 
 class Client(StrictRedis):
     def modelset(self,
@@ -227,7 +249,7 @@ class Client(StrictRedis):
         if meta_only:
             return as_type(dtype, shape, [])
         else:
-            return as_type(dtype, shape, res[2])
+            return as_type.from_resp(dtype, shape, res[2])
 
     def scriptset(self, name, device, script):
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)
