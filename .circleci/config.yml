@@ -37,7 +37,9 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            
+            pip install -r test-requirements.txt
+            pip install nose
+            nosetests -vsx test 
       - store_artifacts:
           path: test-reports
           destination: test-reports
