@@ -165,13 +165,16 @@ class Client(StrictRedis):
                  name,  # type: AnyStr
                  backend,  # type: Backend
                  device,  # type: Device
-                 input,  # type: Union[AnyStr|Collection[AnyStr]]
-                 output,  # type: Union[AnyStr|Collection[AnyStr]]
-                 data  # type: ByteString
+                 data,  # type: ByteString
+                 input=None,  # type: Union[AnyStr|Collection[AnyStr]|None]
+                 output=None  # type: Union[AnyStr|Collection[AnyStr]|None]
                  ):
-        args = ['AI.MODELSET', name, backend.value, device.value, 'INPUTS']
-        args += _str_or_strlist(input)
-        args += ['OUTPUTS'] + _str_or_strlist(output)
+        args = ['AI.MODELSET', name, backend.value, device.value]
+        if backend == Backend.tf:
+            if not(all((input, output))):
+                raise ValueError('Require keyword arguments input and output for TF models')
+            args += ['INPUTS'] + _str_or_strlist(input)
+            args += ['OUTPUTS'] + _str_or_strlist(output)
         args += [data]
         return self.execute_command(*args)
 
