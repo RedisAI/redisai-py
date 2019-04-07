@@ -47,7 +47,7 @@ jobs:
   build_nightly:
     docker:
       - image: circleci/python:2.7.15
-      - image: redislabs/redisai:edge
+      - image: redisai/redisai:edge
 
     working_directory: ~/repo
 
