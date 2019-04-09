@@ -1,11 +1,19 @@
 from unittest import TestCase
 import numpy as np
 import os.path
-from redisai import Client, DType, Backend, Device, Tensor, ScalarTensor
+from redisai import Client, DType, Backend, Device, Tensor, BlobTensor
 from redis.exceptions import ResponseError
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + '/testdata'
+
+
+class TensorTestCase(TestCase):
+    def testTensorShapes(self):
+        t = Tensor(DType.float, [4], [1, 2, 3, 4])
+        self.assertEqual([4], t.shape)
+        t = BlobTensor.from_numpy(np.array([[1, 2, 3], [4, 5, 6]]))
+        self.assertEqual([2, 3], t.shape)
 
 
 class ClientTestCase(TestCase):
@@ -18,11 +26,11 @@ class ClientTestCase(TestCase):
 
     def test_set_tensor(self):
         con = self.get_client()
-        con.tensorset('x', ScalarTensor(DType.float, 2, 3))
+        con.tensorset('x', Tensor.scalar(DType.float, 2, 3))
         values = con.tensorget('x')
         self.assertEqual([2, 3], values.value)
 
-        con.tensorset('x', ScalarTensor(DType.int32, 2, 3))
+        con.tensorset('x', Tensor.scalar(DType.int32, 2, 3))
         values = con.tensorget('x').value
         self.assertEqual([2, 3], values)
 
@@ -65,8 +73,8 @@ class ClientTestCase(TestCase):
                           model_pb,
                           input=['a', 'b'], output='mul')
 
-        con.tensorset('a', ScalarTensor(DType.float, 2, 3))
-        con.tensorset('b', ScalarTensor(DType.float, 2, 3))
+        con.tensorset('a', Tensor.scalar(DType.float, 2, 3))
+        con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
         con.modelrun('m', ['a', 'b'], 'c')
         tensor = con.tensorget('c')
         self.assertEqual([4, 9], tensor.value)
@@ -79,8 +87,8 @@ class ClientTestCase(TestCase):
 def bar(a, b):
     return a + b
 """)
-        con.tensorset('a', ScalarTensor(DType.float, 2, 3))
-        con.tensorset('b', ScalarTensor(DType.float, 2, 3))
+        con.tensorset('a', Tensor.scalar(DType.float, 2, 3))
+        con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
         # try with bad arguments:
         self.assertRaises(ResponseError,
                           con.scriptrun, 'ket', 'bar', input='a', output='c')
