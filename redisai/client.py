@@ -47,6 +47,7 @@ def _str_or_strlist(v):
         return [v]
     return v
 
+
 def _convert_to_num(dt, arr):
     for ix in six.moves.range(len(arr)):
         obj = arr[ix]
@@ -80,15 +81,10 @@ class Tensor(object):
             is always consistent.
         """
         self.type = dtype
-        self.shape = shape
+        self.shape = list(shape)
         self.value = value
-        self._size = 1
         if not isinstance(value, (list, tuple)):
             self.value = [value]
-
-    @property
-    def size(self):
-        return self._size
 
     def __repr__(self):
         return '<{c.__class__.__name__}(shape={s} type={t}) at 0x{id:x}>'.format(
@@ -104,19 +100,15 @@ class Tensor(object):
         _convert_to_num(dtype, value)
         return cls(dtype, shape, value)
 
-
-class ScalarTensor(Tensor):
-    def __init__(self, dtype, *values):
-        # type: (ScalarTensor, DType, Any) -> None
+    @classmethod
+    def scalar(cls, dtype, *items):
         """
-        Declare a tensor with a bunch of scalar values. This can be used
-        to 'batch-load' several tensors.
-
-        :param dtype: The datatype to store the tensor as
-        :param values: List of values
+        Create a tensor from a list of numbers
+        :param dtype: Type to use for storage
+        :param items: One or more items
+        :return: Tensor
         """
-        super(ScalarTensor, self).__init__(dtype, [1], values)
-        self._size = len(values)
+        return cls(dtype, [len(items)], items)
 
 
 class BlobTensor(Tensor):
@@ -141,12 +133,11 @@ class BlobTensor(Tensor):
                 blobarr += b
             size = len(blobs)
             blobs = bytes(blobarr)
+            shape = [size] + list(shape)
         else:
             blobs = bytes(blobs[0])
-            size = 1
 
         super(BlobTensor, self).__init__(dtype, shape, blobs)
-        self._size = size
 
     @classmethod
     def from_numpy(cls, *nparrs):
@@ -194,7 +185,8 @@ class Client(StrictRedis):
         args = ['AI.MODELSET', name, backend.value, device.value]
         if backend == Backend.tf:
             if not(all((input, output))):
-                raise ValueError('Require keyword arguments input and output for TF models')
+                raise ValueError(
+                    'Require keyword arguments input and output for TF models')
             args += ['INPUTS'] + _str_or_strlist(input)
             args += ['OUTPUTS'] + _str_or_strlist(output)
         args += [data]
@@ -227,7 +219,7 @@ class Client(StrictRedis):
         """
         if np and isinstance(tensor, np.ndarray):
             tensor = BlobTensor.from_numpy(tensor)
-        args = ['AI.TENSORSET', key, tensor.type.value, tensor.size]
+        args = ['AI.TENSORSET', key, tensor.type.value]
         args += tensor.shape
         args += [tensor.ARGNAME]
         args += tensor.value
