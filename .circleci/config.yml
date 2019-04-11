@@ -40,6 +40,7 @@ jobs:
             pip install -r test-requirements.txt
             pip install nose
             nosetests -vsx test 
+            
       - store_artifacts:
           path: test-reports
           destination: test-reports
@@ -76,7 +77,9 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            REDIS_PORT=6379 python redisai/test.py 
+            pip install -r test-requirements.txt
+            pip install nose
+            nosetests -vsx test  
 
       # no need for store_artifacts on nightly builds 
 
