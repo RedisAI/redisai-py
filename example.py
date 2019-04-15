@@ -1,28 +1,27 @@
 from __future__ import print_function
 from redisai import Client, Tensor, ScalarTensor, \
     BlobTensor, DType, Device, Backend
+from redisai import model as raimodel
 
 client = Client()
 client.tensorset('x', Tensor(DType.float, [2], [2, 3]))
 t = client.tensorget('x')
 print(t.value)
 
-MODEL_PATH = '../RedisAI/examples/models/graph.pb'
-
+model = raimodel.Model.load('../RedisAI/examples/models/graph.pb')
 client.tensorset('a', ScalarTensor(DType.float, 2, 3))
 client.tensorset('b', ScalarTensor(DType.float, 12, 10))
 client.modelset('m', Backend.tf,
                 Device.cpu,
                 input=['a', 'b'],
                 output='mul',
-                data=open(MODEL_PATH, 'rb').read())
+                data=model)
 client.modelrun('m', ['a', 'b'], ['mul'])
 print(client.tensorget('mul').value)
 
 # Try with a script
-SCRIPTPATH = '../RedisAI/examples/models/script.txt'
-
-client.scriptset('ket', Device.cpu, open(SCRIPTPATH, 'rb').read())
+script = raimodel.Model.load('../RedisAI/examples/models/script.txt')
+client.scriptset('ket', Device.cpu, script)
 client.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
 
 b1 = client.tensorget('c', astype=BlobTensor)
