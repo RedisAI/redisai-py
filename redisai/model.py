@@ -20,7 +20,7 @@ class Model:
 
     __slots__ = ['graph', 'backend', 'device', 'inputs', 'outputs']
     
-    def __init__(self, path, device=Device.cpu, inputs=[], outputs=[]):
+    def __init__(self, path, device=Device.cpu, inputs=None, outputs=None):
         """
         Declare a model suitable for passing to modelset
         :param path: Filepath from where the stored model can be read
@@ -37,7 +37,7 @@ class Model:
         raise NotImplementedError('Instance creation is not impelemented yet')
 
     @classmethod
-    def save(cls, obj, path: str, input=[], output=[], as_native=True):
+    def save(cls, obj, path: str, input=None, output=None, as_native=True):
         """
         Infer the backend (TF/PyTorch) by inspecting the class hierarchy
         and calls the appropriate serialization utility. It is essentially a
@@ -94,7 +94,7 @@ class Model:
             raise NotImplementedError('Saving non-native graph is not supported yet')
 
     @staticmethod
-    def _get_filled_dict(graph, backend, input=[], output=[]):
+    def _get_filled_dict(graph, backend, input=None, output=None):
         return {
             'graph': graph,
             'backend': backend,
