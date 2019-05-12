@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='redisai',
-    version='0.1.1',
+    version='0.2.0',
 
     description='RedisAI Python Client',
     url='http://github.com/RedisAI/redisai-py',
@@ -17,7 +17,10 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Database',
         'Topic :: Software Development :: Testing'
     ]
