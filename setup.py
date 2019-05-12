@@ -9,6 +9,8 @@ setup(
 
     description='RedisAI Python Client',
     url='http://github.com/RedisAI/redisai-py',
+    author='RedisLabs',
+    author_email='oss@redislabs.com',
     packages=find_packages(),
     install_requires=['redis', 'hiredis', 'rmtest'],
     classifiers=[
