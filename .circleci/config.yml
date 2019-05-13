@@ -39,7 +39,8 @@ jobs:
             . venv/bin/activate
             pip install -r test-requirements.txt
             pip install nose
-            nosetests -vsx test 
+            nosetests --with-coverage -vsx test
+            codecov
             
       - store_artifacts:
           path: test-reports
