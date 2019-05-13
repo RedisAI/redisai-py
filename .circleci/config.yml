@@ -38,7 +38,7 @@ jobs:
           command: |
             . venv/bin/activate
             pip install -r test-requirements.txt
-            pip install nose
+            pip install nose codecov
             nosetests --with-coverage -vsx test
             codecov
             
