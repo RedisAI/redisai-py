@@ -20,6 +20,6 @@
 $ pip install redisai
 ```
 
-[RedisAI example repo](https://github.com/RedisAI/redisai-examples) shows few examples made using redisai-py under python client section.
+[RedisAI example repo](https://github.com/RedisAI/redisai-examples) shows few examples made using redisai-py under `python_client` section.
 
 

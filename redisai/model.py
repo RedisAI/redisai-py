@@ -12,7 +12,6 @@ try:
 except (ModuleNotFoundError, ImportError):
     pass
 
-
 try:
     import onnx
 except (ModuleNotFoundError, ImportError):
