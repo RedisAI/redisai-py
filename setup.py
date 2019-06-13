@@ -2,10 +2,11 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
+exec(open('redisai/version.py').read())
 
 setup(
     name='redisai',
-    version='0.2.0',
+    version=__version__,  # comes from redisai/version.py
 
     description='RedisAI Python Client',
     url='http://github.com/RedisAI/redisai-py',
