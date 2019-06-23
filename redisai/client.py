@@ -15,31 +15,31 @@ except ImportError:
 
 
 class Device(Enum):
-    cpu = 'cpu'
-    gpu = 'gpu'
+    cpu = 'CPU'
+    gpu = 'GPU'
 
 
 class Backend(Enum):
-    tf = 'tf'
-    torch = 'torch'
-    onnx = 'ort'
+    tf = 'TF'
+    torch = 'TORCH'
+    onnx = 'ONNX'
 
 
 class DType(Enum):
-    float = 'float'
-    double = 'double'
-    int8 = 'int8'
-    int16 = 'int16'
-    int32 = 'int32'
-    int64 = 'int64'
-    uint8 = 'uint8'
-    uint16 = 'uint16'
-    uint32 = 'uint32'
-    uint64 = 'uint64'
+    float = 'FLOAT'
+    double = 'DOUBLE'
+    int8 = 'INT8'
+    int16 = 'INT16'
+    int32 = 'INT32'
+    int64 = 'INT64'
+    uint8 = 'UINT8'
+    uint16 = 'UINT16'
+    uint32 = 'UINT32'
+    uint64 = 'UINT64'
 
     # aliases
-    float32 = 'float'
-    float64 = 'double'
+    float32 = 'FLOAT'
+    float64 = 'DOUBLE'
 
 
 def _str_or_strlist(v):
@@ -54,7 +54,7 @@ def _convert_to_num(dt, arr):
         if isinstance(obj, list):
             _convert_to_num(obj)
         else:
-            if dt in (DType.float, DType.double):
+            if dt in (DType.float.value, DType.double.value):
                 arr[ix] = float(obj)
             else:
                 arr[ix] = int(obj)
@@ -159,10 +159,9 @@ class BlobTensor(Tensor):
 
     @staticmethod
     def _to_numpy_type(t):
-        t = t.lower()
         mm = {
-            'float': 'float32',
-            'double': 'float64'
+            'FLOAT': 'float32',
+            'DOUBLE': 'float64'
         }
         if t in mm:
             return mm[t]

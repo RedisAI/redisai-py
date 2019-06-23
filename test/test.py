@@ -2,6 +2,7 @@ from unittest import TestCase
 import numpy as np
 import os.path
 from redisai import Client, DType, Backend, Device, Tensor, BlobTensor
+from redisai import load_model
 from redis.exceptions import ResponseError
 
 
@@ -44,14 +45,11 @@ class ClientTestCase(TestCase):
         self.assertEqual([2, 3], values)
 
     def test_run_tf_model(self):
-        model = os.path.join(MODEL_DIR, 'graph.pb')
-        bad_model = os.path.join(MODEL_DIR, 'pt-minimal.pt')
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        bad_model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
 
-        with open(model, 'rb') as f:
-            model_pb = f.read()
-
-        with open(bad_model, 'rb') as f:
-            wrong_model_pb = f.read()
+        model_pb = load_model(model_path)
+        wrong_model_pb = load_model(bad_model_path)
 
         con = self.get_client()
         con.modelset('m', Backend.tf, Device.cpu, model_pb,
@@ -95,6 +93,29 @@ def bar(a, b):
         con.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
         tensor = con.tensorget('c')
         self.assertEqual([4, 6], tensor.value)
+
+    def test_run_onnxml_model(self):
+        mlmodel_path = os.path.join(MODEL_DIR, 'boston.onnx')
+        onnxml_model = load_model(mlmodel_path)
+        con = self.get_client()
+        con.modelset("onnx_model", Backend.onnx, Device.cpu, onnxml_model)
+        tensor = BlobTensor.from_numpy(np.ones((1, 13), dtype=np.float32))
+        con.tensorset("input", tensor)
+        con.modelrun("onnx_model", ["input"], ["output"])
+        outtensor = con.tensorget("output")
+        self.assertEqual(int(outtensor.value[0]), 24)
+
+    def test_run_onnxdl_model(self):
+        # A PyTorch model that finds the square
+        dlmodel_path = os.path.join(MODEL_DIR, 'findsquare.onnx')
+        onnxdl_model = load_model(dlmodel_path)
+        con = self.get_client()
+        con.modelset("onnx_model", Backend.onnx, Device.cpu, onnxdl_model)
+        tensor = BlobTensor.from_numpy(np.array((2, 3), dtype=np.float32))
+        con.tensorset("input", tensor)
+        con.modelrun("onnx_model", ["input"], ["output"])
+        outtensor = con.tensorget("output")
+        self.assertEqual(outtensor.value, [4.0, 9.0])
 
 
 # TODO: image/blob tests; more numpy tests..

@@ -1,3 +1,6 @@
 numpy
 torch
 tensorflow
+onnx
+skl2onnx
+pandas
