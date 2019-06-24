@@ -50,14 +50,13 @@ def save_onnx(graph, path):
         f.write(graph.SerializeToString())
 
 
-def save_sklearn(graph, path, prototype):
+def save_sklearn(graph, path, prototype=None, shape=None, dtype=None):
     """
     TODO: Docstring
     """
     if not is_installed(['onnxmltools', 'skl2onnx', 'pandas']):
         raise RuntimeError('Please install onnxmltools, skl2onnx & pandas to use this feature.')
     from onnxmltools import convert_sklearn
-
     datatype = guess_onnx_dtype(prototype)
     serialized = convert_sklearn(graph, initial_types=datatype)
     save_onnx(serialized, path)
@@ -78,22 +77,22 @@ def save_sparkml(graph, path, prototype=None, shape=None, dtype=None):
     save_onnx(serialized, path)
 
 
-def save_coreml(graph, path):
-    if not is_installed(['onnxmltools', 'coremltools']):
-        raise RuntimeError('Please install onnxmltools & coremltools to use this feature.')
-    from onnxmltools import convert_coreml
-
-    serialized = convert_coreml(graph)
-    save_onnx(serialized, path)
-
-
-def save_xgboost(graph, path, prototype):
+def save_xgboost(graph, path, prototype=None, shape=None, dtype=None):
     if not is_installed(['onnxmltools', 'xgboost']):
         raise RuntimeError('Please install onnxmltools & xgboost to use this feature.')
     from onnxmltools import convert_xgboost
 
     datatype = guess_onnx_dtype(prototype)
     serialized = convert_xgboost(graph, initial_types=datatype)
+    save_onnx(serialized, path)
+
+
+def save_coreml(graph, path):
+    if not is_installed(['onnxmltools', 'coremltools']):
+        raise RuntimeError('Please install onnxmltools & coremltools to use this feature.')
+    from onnxmltools import convert_coreml
+
+    serialized = convert_coreml(graph)
     save_onnx(serialized, path)
 
 

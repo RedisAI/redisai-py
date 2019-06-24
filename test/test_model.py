@@ -36,7 +36,7 @@ def get_sklearn_model_and_prototype():
     boston = datasets.load_boston()
     X, y = boston.data, boston.target
     model.fit(X, y)
-    return model, X[0].reshape(1, -1)
+    return model, X[0].reshape(1, -1).astype(np.float32)
 
 
 def get_dummy_prototype():
@@ -133,7 +133,7 @@ class ModelTestCase(TestCase):
     def testSKLearnGraph(self):
         sklearn_model, prototype = get_sklearn_model_and_prototype()
         path = f'{time.time()}.onnx'
-        self.assertRaises(TypeError, save_sklearn, sklearn_model, path)
+        self.assertRaises(RuntimeError, save_sklearn, sklearn_model, path)
         save_sklearn(sklearn_model, path, prototype=prototype)
         model = load_model(path)
         os.remove(path)

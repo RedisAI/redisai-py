@@ -22,12 +22,18 @@ def is_installed(packages):
 
 def guess_onnx_dtype(prototype=None, shape=None, dtype=None):
     # TODO: remove this once this is added to onnxconverter_common
+    # TODO: allowed type checks
     from onnxconverter_common import data_types as onnx_dtypes
-    import numpy as np
+    from .client import DType  # to eliminate circular import
     if prototype is not None:
         if hasattr(prototype, 'shape') and hasattr(prototype, 'dtype'):
             shape = prototype.shape
-            dtype = prototype.dtype
+            dtype = prototype.dtype.name
+            mm = {
+                'float32': 'FLOAT',
+                'float64': 'DOUBLE'}
+            if dtype in mm:
+                dtype = mm[dtype]
         else:
             raise TypeError(
                 "Serializing to ONNX requires shape and dtype"
@@ -38,21 +44,18 @@ def guess_onnx_dtype(prototype=None, shape=None, dtype=None):
         raise RuntimeError((
             "Could not infer shape and dtype. "
             "Either pass them as argument or pass a prototype that has shape and dtype attribute"))
-    if dtype in (np.float32, np.float64):
+    dtype = dtype.upper()
+    if dtype == DType.float32.value:
         onnx_dtype = onnx_dtypes.FloatTensorType(shape)
-    elif dtype in (np.str, str, object) or str(
-        dtype) in ('<U1', ): # noqa
-        onnx_dtype = onnx_dtypes.StringTensorType(shape)
-    elif dtype in (np.int64, np.uint64) or str(dtype) == '<U6':
+    elif dtype == DType.float64.value:
+        onnx_dtype = onnx_dtypes.DoubleTensorType(shape)
+    elif dtype in (DType.int64.value, DType.uint64.value):
         onnx_dtype = onnx_dtypes.Int64TensorType(shape)
-    elif dtype in (np.int32, np.uint32) or str(
-        dtype) in ('<U4', ): # noqa
+    elif dtype in (DType.int32.value, DType.uint32.value): # noqa
         onnx_dtype = onnx_dtypes.Int32TensorType(shape)
-    elif dtype == np.bool:
-        onnx_dtype = onnx_dtypes.BooleanTensorType(shape)
     else:
         raise NotImplementedError(
-            "Unsupported dtype '{}'. You may raise an issue "
-            "at https://github.com/RedisAI/redisai-py."
-            "".format(dtype))
+            "'{}' is not supported either by RedisAI or by ONNXRuntime. "
+            "You may raise an issue at https://github.com/RedisAI/redisai-py."
+            "".format(dtype.lower()))
     return [('input', onnx_dtype)]
