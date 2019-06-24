@@ -48,7 +48,7 @@ class Model:
         """
 
 
-def save_tensorflow(sess, path, output, as_native=False):
+def save_tensorflow(sess, path, output, as_native=True):
     """
     TODO: Docstring
     """
@@ -70,7 +70,7 @@ def save_tensorflow(sess, path, output, as_native=False):
         raise NotImplementedError('Saving non-native graph is not supported yet')
 
 
-def save_torch(graph, path, as_native=False):
+def save_torch(graph, path, as_native=True):
     """
     TODO: Docstring
     """
@@ -89,7 +89,7 @@ def save_torch(graph, path, as_native=False):
         raise NotImplementedError('Saving non-native graph is not supported yet')
 
 
-def save_onnx(graph, path, as_native=False):
+def save_onnx(graph, path, as_native=True):
     """
     TODO: Docstring
     """
@@ -100,12 +100,12 @@ def save_onnx(graph, path, as_native=False):
         raise NotImplementedError('Saving non-native graph is not supported yet')
 
 
-def save_sklearn(graph, path, prototype, as_native=False):
+def save_sklearn(graph, path, prototype, as_native=True):
     """
     TODO: Docstring
     """
     if not is_installed(['onnxmltools', 'skl2onnx', 'pandas']):
-        raise RuntimeError('Please install onnxmltools, skl2onnx, pandas to use this feature.')
+        raise RuntimeError('Please install onnxmltools, skl2onnx & pandas to use this feature.')
     from onnxmltools import convert_sklearn
 
     if not as_native:
@@ -116,24 +116,45 @@ def save_sklearn(graph, path, prototype, as_native=False):
     save_onnx(serialized, path, as_native)
 
 
-def save_sparkml(graph, path, prototype, as_native=False):
-    pass
+def save_sparkml(graph, path, prototype, as_native=True):
+    """
+    TODO: Docstring
+    """
+    if not is_installed(['onnxmltools', 'pyspark']):
+        raise RuntimeError('Please install onnxmltools & pyspark to use this feature.')
+    from onnxmltools import convert_sparkml
+
+    if as_native:
+        raise NotImplementedError('Saving non-native graph is not supported yet')
+
+    # TODO: test issue with passing different datatype for numerical values
+        # known issue: https://github.com/onnx/onnxmltools/tree/master/onnxmltools/convert/sparkml
+    datatype = guess_onnx_dtype(prototype)
+    serialized = convert_sparkml(graph, initial_types=datatype)
+    save_onnx(serialized, path, as_native)
 
 
-def save_coreml():
-    pass
+def save_coreml(graph, path, as_native=True):
+    if not is_installed(['onnxmltools', 'coremltools']):
+        raise RuntimeError('Please install onnxmltools & coremltools to use this feature.')
+    from onnxmltools import convert_coreml
+
+    if as_native:
+        raise NotImplementedError('Saving non-native graph is not supported yet')
+    serialized = convert_coreml(graph)
+    save_onnx(serialized, path, as_native)
 
 
-def save_libsvm():
-    pass
+def save_xgboost(graph, path, prototype, as_native=True):
+    if not is_installed(['onnxmltools', 'xgboost']):
+        raise RuntimeError('Please install onnxmltools & xgboost to use this feature.')
+    from onnxmltools import convert_xgboost
 
-
-def save_lightgbm():
-    pass
-
-
-def save_xgboost():
-    pass
+    if as_native:
+        raise NotImplementedError('Saving non-native graph is not supported yet')
+    datatype = guess_onnx_dtype(prototype)
+    serialized = convert_xgboost(graph, initial_types=datatype)
+    save_onnx(serialized, path, as_native)
 
 
 def load_model(path: str):

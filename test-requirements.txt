@@ -1,6 +1,6 @@
 numpy
 torch
-tensorflow
+tensorflow==1.13.1
 onnx
 skl2onnx
 pandas

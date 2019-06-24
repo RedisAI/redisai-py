@@ -3,11 +3,15 @@ import os
 
 from unittest import TestCase
 from redisai import save_model, load_model
+from redisai import (
+    save_tensorflow, save_torch, save_onnx, save_sklearn,
+    save_sparkml, save_coreml, save_xgboost)
 from redisai import Client, Backend, Device, Tensor, DType
 import tensorflow as tf
 import torch
 from sklearn import linear_model, datasets
 import onnx
+import numpy as np
 
 
 def get_tf_graph():
@@ -35,6 +39,10 @@ def get_sklearn_model_and_prototype():
     return model, X[0].reshape(1, -1)
 
 
+def get_dummy_prototype():
+    return np.array([1, 2])
+
+
 def get_onnx_model():
     torch_model = torch.nn.ReLU()
     # maybe there exists, but couldn't find a way to pass
@@ -56,7 +64,7 @@ class ModelTestCase(TestCase):
         sess = tf.Session()
         sess.run(init)
         path = f'{time.time()}.pb'
-        save_model(sess, path, output=['output'])
+        save_tensorflow(sess, path, output=['output'])
         model = load_model(path)
         os.remove(path)
         con = self.get_client()
@@ -71,7 +79,7 @@ class ModelTestCase(TestCase):
     def testPyTorchGraph(self):
         torch_graph = MyModule()
         path = f'{time.time()}.pt'
-        save_model(torch_graph, path)
+        save_torch(torch_graph, path)
         model = load_model(path)
         os.remove(path)
         con = self.get_client()
@@ -84,13 +92,31 @@ class ModelTestCase(TestCase):
 
     def testFakeObjSave(self):
         fakemodel = {}
+        prototype = get_dummy_prototype()
         self.assertRaises(
-            RuntimeError,
-            save_model, fakemodel, 'fake.pt')
+            AttributeError,
+            save_torch, fakemodel, 'fake.pt')
         wrongmodel_pt = torch.nn.Linear(2, 3)
         self.assertRaises(
+            AttributeError,
+            save_torch, wrongmodel_pt, 'wrong.pt')
+        self.assertRaises(
+            AttributeError,
+            save_tensorflow, wrongmodel_pt, 'wrong.pt', output=['output'])
+        self.assertRaises(
+            AttributeError,
+            save_onnx, wrongmodel_pt, 'wrong.pt')
+        self.assertRaises(
             RuntimeError,
-            save_model, wrongmodel_pt, 'wrong.pt')
+            save_sklearn, wrongmodel_pt, 'wrong.pt', prototype)
+        if os.path.isfile('wrong.pt'):
+            os.remove('wrong.pt')
+
+    def testSaveModelDeprecation(self):
+        torch_graph = MyModule()
+        self.assertRaises(
+            DeprecationWarning,
+            save_model, torch_graph, 'wrong.pt')
 
     def testScriptLoad(self):
         con = self.get_client()
@@ -107,8 +133,8 @@ class ModelTestCase(TestCase):
     def testSKLearnGraph(self):
         sklearn_model, prototype = get_sklearn_model_and_prototype()
         path = f'{time.time()}.onnx'
-        self.assertRaises(TypeError, save_model, sklearn_model, path)
-        save_model(sklearn_model, path, prototype=prototype)
+        self.assertRaises(TypeError, save_sklearn, sklearn_model, path)
+        save_sklearn(sklearn_model, path, prototype=prototype)
         model = load_model(path)
         os.remove(path)
         con = self.get_client()
@@ -121,7 +147,7 @@ class ModelTestCase(TestCase):
     def testONNXGraph(self):
         onnx_model = get_onnx_model()
         path = f'{time.time()}.onnx'
-        save_model(onnx_model, path)
+        save_onnx(onnx_model, path)
         model = load_model(path)
         os.remove(path)
         con = self.get_client()
