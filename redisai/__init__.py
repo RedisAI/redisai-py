@@ -7,8 +7,6 @@ from .model import load_model  # noqa
 
 
 def save_model(*args, **kwargs):
-    """
-    Deprecated
-    """
-    from .model import Model
-    Model.save(*args, **kwargs)
+    raise DeprecationWarning((
+        "Single entry for saving different object is deprecated. "
+        "Use specific utility for each type. For more information checkout the documentation"))
