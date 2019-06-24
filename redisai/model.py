@@ -57,12 +57,12 @@ def save_sklearn(graph, path, prototype=None, shape=None, dtype=None):
     if not is_installed(['onnxmltools', 'skl2onnx', 'pandas']):
         raise RuntimeError('Please install onnxmltools, skl2onnx & pandas to use this feature.')
     from onnxmltools import convert_sklearn
-    datatype = guess_onnx_dtype(prototype)
+    datatype = guess_onnx_dtype(prototype, shape, dtype)
     serialized = convert_sklearn(graph, initial_types=datatype)
     save_onnx(serialized, path)
 
 
-def save_sparkml(graph, path, prototype=None, shape=None, dtype=None):
+def save_sparkml(graph, path, input_name, prototype=None, shape=None, dtype=None):
     """
     TODO: Docstring
     """
@@ -72,7 +72,7 @@ def save_sparkml(graph, path, prototype=None, shape=None, dtype=None):
 
     # TODO: test issue with passing different datatype for numerical values
     # known issue: https://github.com/onnx/onnxmltools/tree/master/onnxmltools/convert/sparkml
-    datatype = guess_onnx_dtype(prototype)
+    datatype = guess_onnx_dtype(prototype, shape, dtype, input_name)
     serialized = convert_sparkml(graph, initial_types=datatype)
     save_onnx(serialized, path)
 
@@ -82,7 +82,7 @@ def save_xgboost(graph, path, prototype=None, shape=None, dtype=None):
         raise RuntimeError('Please install onnxmltools & xgboost to use this feature.')
     from onnxmltools import convert_xgboost
 
-    datatype = guess_onnx_dtype(prototype)
+    datatype = guess_onnx_dtype(prototype, shape, dtype)
     serialized = convert_xgboost(graph, initial_types=datatype)
     save_onnx(serialized, path)
 
