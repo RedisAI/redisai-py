@@ -20,12 +20,9 @@ def is_installed(packages):
     return True
 
 
-def guess_onnx_dtype(prototype=None, shape=None, dtype=None, input_name='features'):
-    # TODO: remove this once this is added to onnxconverter_common
-    # TODO: allowed type checks
-    from onnxconverter_common import data_types as onnx_dtypes
+def infer_shape_dtype(prototype, shape, dtype):
+    # TODO: perhaps move this to onnxconverter_common
     from .client import DType  # to eliminate circular import
-
     if prototype is not None:
         if hasattr(prototype, 'shape') and hasattr(prototype, 'dtype'):
             shape = prototype.shape
@@ -33,11 +30,23 @@ def guess_onnx_dtype(prototype=None, shape=None, dtype=None, input_name='feature
         else:
             raise TypeError("`prototype` has to be a valid `numpy.ndarray` of shape of your input")
     if isinstance(dtype, str):
-        dtype = DType[dtype.lower()]
+        try:
+            dtype = DType[dtype.lower()]
+        except KeyError:
+            raise RuntimeError(
+                f"{dtype} is not supported by RedisAI "
+                "You may raise an issue at https://github.com/RedisAI/redisai-py.")
     elif not isinstance(dtype, DType):
         raise TypeError("`dtype` has to be of type `numpy.ndarray`/ `str` / `redisai.DType`")
     if not isinstance(shape, tuple) or isinstance(shape, list):
         raise RuntimeError(("Inferred `shape` attribute is not a tuple / list"))
+    return shape, dtype
+
+
+def guess_onnx_tensortype(shape, dtype, input_name='features'):
+    # TODO: remove this once this is added to onnxconverter_common or move this there
+    from onnxconverter_common import data_types as onnx_dtypes
+    from .client import DType  # to eliminate circular import
 
     if dtype == DType.float32:
         onnx_dtype = onnx_dtypes.FloatTensorType(shape)
@@ -49,7 +58,6 @@ def guess_onnx_dtype(prototype=None, shape=None, dtype=None, input_name='feature
         onnx_dtype = onnx_dtypes.Int32TensorType(shape)
     else:
         raise NotImplementedError(
-            "'{}' is not supported either by RedisAI or by ONNXRuntime. "
-            "You may raise an issue at https://github.com/RedisAI/redisai-py."
-            "".format(dtype.lower()))
+            f"'{dtype.name}' is not supported by ONNXRuntime. "
+            "You may raise an issue at https://github.com/RedisAI/redisai-py.")
     return [(input_name, onnx_dtype)]
