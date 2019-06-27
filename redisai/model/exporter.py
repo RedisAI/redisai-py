@@ -1,8 +1,16 @@
 import os
 import warnings
+import importlib
+from . import onnx_utils
 
-from ._util import is_installed
-from ._util import infer_shape_dtype, guess_onnx_tensortype
+
+def is_installed(packages):
+    if not isinstance(packages, list):
+        packages = [packages]
+    for p in packages:
+        if importlib.util.find_spec(p) is None:
+            return False
+    return True
 
 
 def save_tensorflow(sess, path, output):
@@ -50,20 +58,26 @@ def save_onnx(graph, path):
         f.write(graph.SerializeToString())
 
 
-def save_sklearn(graph, path, prototype=None, shape=None, dtype=None):
+def save_sklearn(graph, path, initial_types=None, prototype=None, shape=None, dtype=None):
     """
     TODO: Docstring
     """
     if not is_installed(['onnxmltools', 'skl2onnx', 'pandas']):
         raise RuntimeError('Please install onnxmltools, skl2onnx & pandas to use this feature.')
     from onnxmltools import convert_sklearn
-    shape, dtype = infer_shape_dtype(prototype, shape, dtype)
-    tensortype = guess_onnx_tensortype(shape, dtype)
-    serialized = convert_sklearn(graph, initial_types=tensortype)
+    if not initial_types:
+        initial_types = [onnx_utils.guess_onnx_tensortype(prototype, shape, dtype)]
+    if not isinstance(initial_types, list):
+        raise TypeError((
+            "`initial_types` has to be a list. "
+            "If you have only one initial_type, put that into a list"))
+    serialized = convert_sklearn(graph, initial_types=initial_types)
     save_onnx(serialized, path)
 
 
-def save_sparkml(graph, path, input_name, prototype=None, shape=None, dtype=None):
+def save_sparkml(
+        graph, path, initial_types=None, prototype=None,
+        shape=None, dtype=None, spark_session=None):
     """
     TODO: Docstring
     """
@@ -73,37 +87,5 @@ def save_sparkml(graph, path, input_name, prototype=None, shape=None, dtype=None
 
     # TODO: test issue with passing different datatype for numerical values
     # known issue: https://github.com/onnx/onnxmltools/tree/master/onnxmltools/convert/sparkml
-    shape, dtype = infer_shape_dtype(prototype, shape, dtype)
-    tensortype = guess_onnx_tensortype(shape, dtype)
-    serialized = convert_sparkml(graph, initial_types=tensortype)
+    serialized = convert_sparkml(graph, initial_types=initial_types, spark_session=spark_session)
     save_onnx(serialized, path)
-
-
-def save_xgboost(graph, path, prototype=None, shape=None, dtype=None):
-    if not is_installed(['onnxmltools', 'xgboost']):
-        raise RuntimeError('Please install onnxmltools & xgboost to use this feature.')
-    from onnxmltools import convert_xgboost
-
-    shape, dtype = infer_shape_dtype(prototype, shape, dtype)
-    tensortype = guess_onnx_tensortype(shape, dtype)
-    serialized = convert_xgboost(graph, initial_types=tensortype)
-    save_onnx(serialized, path)
-
-
-def save_coreml(graph, path):
-    if not is_installed(['onnxmltools', 'coremltools']):
-        raise RuntimeError('Please install onnxmltools & coremltools to use this feature.')
-    from onnxmltools import convert_coreml
-
-    serialized = convert_coreml(graph)
-    save_onnx(serialized, path)
-
-
-def load_model(path: str):
-    """
-    Return the binary data if saved with `as_native` otherwise return the dict
-    that contains binary graph/model on `graph` key (Not implemented yet).
-    :param path: File path from where the native model or the rai models are saved
-    """
-    with open(path, 'rb') as f:
-        return f.read()

@@ -13,7 +13,7 @@ setup(
     author='RedisLabs',
     author_email='oss@redislabs.com',
     packages=find_packages(),
-    install_requires=['redis', 'hiredis', 'rmtest'],
+    install_requires=['redis', 'hiredis', 'rmtest', 'onnxmltools'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
