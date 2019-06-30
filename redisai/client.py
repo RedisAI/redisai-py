@@ -9,7 +9,7 @@ except ImportError:
     np = None
 
 try:
-    from typing import Union, Any, AnyStr, ByteString, Collection, Type
+    from typing import Union, Any, AnyStr, ByteString, Collection, Type  # noqa
 except ImportError:
     pass
 
@@ -165,7 +165,7 @@ class BlobTensor(Tensor):
         }
         if t in mm:
             return mm[t]
-        return t
+        return t.lower()
 
     @classmethod
     def from_resp(cls, dtype, shape, value):
