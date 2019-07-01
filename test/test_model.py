@@ -1,17 +1,22 @@
 import time
 import os
-
+import sys
 from unittest import TestCase
+
 from redisai import save_model, load_model
 from redisai import (
-    save_tensorflow, save_torch, save_onnx, save_sklearn,
-    save_sparkml, save_coreml, save_xgboost)
-from redisai import Client, Backend, Device, Tensor, DType
+    save_tensorflow, save_torch, save_onnx, save_sklearn, save_sparkml)
+from redisai.model import onnx_utils
+from redisai import Client, Backend, Device, Tensor, DType, BlobTensor
 import tensorflow as tf
 import torch
 from sklearn import linear_model, datasets
 import onnx
 import numpy as np
+from pyspark.sql import SparkSession
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.regression import LinearRegression
+import pyspark
 
 
 def get_tf_graph():
@@ -51,6 +56,27 @@ def get_onnx_model():
     onnx_model = onnx.load('model.onnx')
     os.remove('model.onnx')
     return onnx_model
+
+
+def get_spark_model_and_prototype():
+    executable = sys.executable
+    os.environ["SPARK_HOME"] = pyspark.__path__[0]
+    os.environ["PYSPARK_PYTHON"] = executable
+    os.environ["PYSPARK_DRIVER_PYTHON"] = executable
+    spark = SparkSession.builder.appName("redisai_trial").getOrCreate()
+    # label is input + 1
+    data = spark.createDataFrame([
+        (2.0, Vectors.dense(1.0)),
+        (3.0, Vectors.dense(2.0)),
+        (4.0, Vectors.dense(3.0)),
+        (5.0, Vectors.dense(4.0)),
+        (6.0, Vectors.dense(5.0)),
+        (7.0, Vectors.dense(6.0))
+    ], ["label", "features"])
+    lr = LinearRegression(maxIter=5, regParam=0.0, solver="normal")
+    model = lr.fit(data)
+    prototype = np.array([[1.0]], dtype=np.float32)
+    return model, prototype
 
 
 class ModelTestCase(TestCase):
@@ -108,7 +134,7 @@ class ModelTestCase(TestCase):
             save_onnx, wrongmodel_pt, 'wrong.pt')
         self.assertRaises(
             RuntimeError,
-            save_sklearn, wrongmodel_pt, 'wrong.pt', prototype)
+            save_sklearn, wrongmodel_pt, 'wrong.pt', prototype=prototype)
         if os.path.isfile('wrong.pt'):
             os.remove('wrong.pt')
 
@@ -130,20 +156,6 @@ class ModelTestCase(TestCase):
         tensor = con.tensorget('c')
         self.assertEqual([5, 12], tensor.value)
 
-    def testSKLearnGraph(self):
-        sklearn_model, prototype = get_sklearn_model_and_prototype()
-        path = f'{time.time()}.onnx'
-        self.assertRaises(TypeError, save_sklearn, sklearn_model, path)
-        save_sklearn(sklearn_model, path, prototype=prototype)
-        model = load_model(path)
-        os.remove(path)
-        con = self.get_client()
-        con.modelset('onnx_skl_model', Backend.onnx, Device.cpu, model)
-        con.tensorset('a', Tensor.scalar(DType.float, *([1] * 13)))
-        con.modelrun('onnx_skl_model', ['a'], ['outfromonnxskl'])
-        tensor = con.tensorget('outfromonnxskl')
-        self.assertEqual(len(tensor.value), 1)
-
     def testONNXGraph(self):
         onnx_model = get_onnx_model()
         path = f'{time.time()}.onnx'
@@ -156,3 +168,94 @@ class ModelTestCase(TestCase):
         con.modelrun('onnxmodel', ['a'], ['c'])
         tensor = con.tensorget('c')
         self.assertEqual([2.0, 0.0], tensor.value)
+
+    def testSKLearnGraph(self):
+        sklearn_model, prototype = get_sklearn_model_and_prototype()
+        path = f'{time.time()}.onnx'
+        self.assertRaises(RuntimeError, save_sklearn, sklearn_model, path)
+        con = self.get_client()
+
+        # saving with prototype
+        path = f'{time.time()}.onnx'
+        save_sklearn(sklearn_model, path, prototype=prototype)
+        model = load_model(path)
+        os.remove(path)
+        con.modelset('onnx_skl_model1', Backend.onnx, Device.cpu, model)
+        con.tensorset('a1', Tensor.scalar(DType.float, *([1] * 13)))
+        con.modelrun('onnx_skl_model1', ['a1'], ['outfromonnxskl1'])
+        tensor = con.tensorget('outfromonnxskl1')
+        self.assertEqual(len(tensor.value), 1)
+
+        # saving with shape and dtype
+        shape = prototype.shape
+        if prototype.dtype == np.float32:
+            dtype = DType.float32
+        else:
+            raise RuntimeError("Test is not configured to run with another type")
+        path = f'{time.time()}.onnx'
+        save_sklearn(sklearn_model, path, shape=shape, dtype=dtype)
+        model = load_model(path)
+        os.remove(path)
+        con.modelset('onnx_skl_model2', Backend.onnx, Device.cpu, model)
+        con.tensorset('a2', Tensor.scalar(DType.float, *([1] * 13)))
+        con.modelrun('onnx_skl_model2', ['a2'], ['outfromonnxskl2'])
+        tensor = con.tensorget('outfromonnxskl2')
+        self.assertEqual(len(tensor.value), 1)
+
+        # saving with initial_types
+        inital_types = onnx_utils.get_tensortype(shape, dtype)
+        path = f'{time.time()}.onnx'
+        save_sklearn(sklearn_model, path, initial_types=[inital_types])
+        model = load_model(path)
+        os.remove(path)
+        con.modelset('onnx_skl_model3', Backend.onnx, Device.cpu, model)
+        con.tensorset('a3', Tensor.scalar(DType.float, *([1] * 13)))
+        con.modelrun('onnx_skl_model3', ['a3'], ['outfromonnxskl3'])
+        tensor = con.tensorget('outfromonnxskl3')
+        self.assertEqual(len(tensor.value), 1)
+
+    def testSparkMLGraph(self):
+        spark_model, prototype = get_spark_model_and_prototype()
+        in_tensor = BlobTensor.from_numpy(prototype)
+        path = f'{time.time()}.onnx'
+        self.assertRaises(RuntimeError, save_sparkml, spark_model, path)
+        con = self.get_client()
+
+        # saving with prototype
+        path = f'{time.time()}.onnx'
+        save_sparkml(spark_model, path, prototype=prototype)
+        model = load_model(path)
+        os.remove(path)
+        con.modelset('spark_model1', Backend.onnx, Device.cpu, model)
+        con.tensorset('a1', in_tensor)
+        con.modelrun('spark_model1', ['a1'], ['outfromspark1'])
+        tensor = con.tensorget('outfromspark1')
+        self.assertEqual(len(tensor.value), 1)
+
+        # saving with shape and dtype
+        shape = prototype.shape
+        if prototype.dtype == np.float32:
+            dtype = DType.float32
+        else:
+            raise RuntimeError("Test is not configured to run with another type")
+        path = f'{time.time()}.onnx'
+        save_sparkml(spark_model, path, shape=shape, dtype=dtype)
+        model = load_model(path)
+        os.remove(path)
+        con.modelset('spark_model2', Backend.onnx, Device.cpu, model)
+        con.tensorset('a2', in_tensor)
+        con.modelrun('spark_model2', ['a2'], ['outfromspark2'])
+        tensor = con.tensorget('outfromspark2')
+        self.assertEqual(len(tensor.value), 1)
+
+        # saving with initial_types
+        inital_types = onnx_utils.get_tensortype(shape, dtype)
+        path = f'{time.time()}.onnx'
+        save_sparkml(spark_model, path, initial_types=[inital_types])
+        model = load_model(path)
+        os.remove(path)
+        con.modelset('spark_model3', Backend.onnx, Device.cpu, model)
+        con.tensorset('a3', in_tensor)
+        con.modelrun('spark_model3', ['a3'], ['outfromspark3'])
+        tensor = con.tensorget('outfromspark3')
+        self.assertEqual(len(tensor.value), 1)
