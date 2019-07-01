@@ -7,3 +7,11 @@ def load_model(path: str):
     """
     with open(path, 'rb') as f:
         return f.read()
+
+
+def load_script(path: str):
+    """
+    Read the script file as binary and return the content
+    """
+    with open(path, 'rb') as f:
+        return f.read()

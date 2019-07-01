@@ -28,6 +28,10 @@ def guess_onnx_tensortype(prototype, shape, dtype, node_name='features'):
             dtype = prototype.dtype.name
         else:
             raise TypeError("`prototype` has to be a valid `numpy.ndarray` of shape of your input")
+    else:
+        if not all([shape, dtype]):
+            raise RuntimeError(
+                "Did you forget to pass `initial_types` or `prototype` or (`shape` & `dtype`)")
     if isinstance(dtype, str):
         try:
             dtype = DType[dtype.lower()]
