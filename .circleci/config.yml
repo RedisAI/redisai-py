@@ -36,6 +36,13 @@ jobs:
       - run:
           name: run tests
           command: |
+            echo SPARK_HOME=~/spark-2.4.3-bin-hadoop2.7 >> .bashrc
+            echo export PATH=$SPARK_HOME/bin:$PATH >> .bashrc
+            source ~/.bashrc
+            sudo apt-get update
+            sudo apt install openjdk-8-jdk
+            wget http://mirrors.estointernet.in/apache/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+            sudo tar xvf spark-2.4.3-bin-hadoop2.7.tgz
             . venv/bin/activate
             pip install -r test-requirements.txt
             pip install nose codecov
@@ -77,6 +84,13 @@ jobs:
       - run:
           name: run tests
           command: |
+            echo SPARK_HOME=~/spark-2.4.3-bin-hadoop2.7 >> .bashrc
+            echo export PATH=$SPARK_HOME/bin:$PATH >> .bashrc
+            source ~/.bashrc
+            sudo apt-get update
+            sudo apt install openjdk-8-jdk
+            wget http://mirrors.estointernet.in/apache/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+            sudo tar xvf spark-2.4.3-bin-hadoop2.7.tgz
             . venv/bin/activate
             pip install -r test-requirements.txt
             pip install nose

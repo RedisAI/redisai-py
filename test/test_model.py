@@ -63,7 +63,7 @@ def get_spark_model_and_prototype():
     os.environ["SPARK_HOME"] = pyspark.__path__[0]
     os.environ["PYSPARK_PYTHON"] = executable
     os.environ["PYSPARK_DRIVER_PYTHON"] = executable
-    spark = SparkSession.builder.appName("redisai_trial").getOrCreate()
+    spark = SparkSession.builder.appName("redisai_test").getOrCreate()
     # label is input + 1
     data = spark.createDataFrame([
         (2.0, Vectors.dense(1.0)),
