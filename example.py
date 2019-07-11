@@ -1,5 +1,5 @@
 from __future__ import print_function
-from redisai import Client, Tensor, ScalarTensor, \
+from redisai import Client, Tensor, \
     BlobTensor, DType, Device, Backend
 from redisai import model as raimodel
 
@@ -9,8 +9,8 @@ t = client.tensorget('x')
 print(t.value)
 
 model = raimodel.Model.load('../RedisAI/examples/models/graph.pb')
-client.tensorset('a', ScalarTensor(DType.float, 2, 3))
-client.tensorset('b', ScalarTensor(DType.float, 12, 10))
+client.tensorset('a', Tensor.scalar(DType.float, 2, 3))
+client.tensorset('b', Tensor.scalar(DType.float, 12, 10))
 client.modelset('m', Backend.tf,
                 Device.cpu,
                 input=['a', 'b'],
@@ -24,8 +24,8 @@ script = raimodel.Model.load('../RedisAI/examples/models/script.txt')
 client.scriptset('ket', Device.cpu, script)
 client.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
 
-b1 = client.tensorget('c', astype=BlobTensor)
-b2 = client.tensorget('c', astype=BlobTensor)
+b1 = client.tensorget('c', as_type=BlobTensor)
+b2 = client.tensorget('c', as_type=BlobTensor)
 bt = BlobTensor(DType.float, b1.shape, b1, b2)
 
 print(len(bytes(bt.blob)))
