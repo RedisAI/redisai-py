@@ -3,3 +3,4 @@
 *.pyc
 .venv/
 redisai.egg-info
+.idea

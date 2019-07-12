@@ -2,7 +2,7 @@ from unittest import TestCase
 import numpy as np
 import os.path
 from redisai import Client, DType, Backend, Device, Tensor, BlobTensor
-from redisai import load_model
+from mlut import load_model
 from redis.exceptions import ResponseError
 
 
