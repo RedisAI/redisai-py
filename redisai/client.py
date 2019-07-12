@@ -225,7 +225,7 @@ class Client(StrictRedis):
         return self.execute_command(*args)
 
     def tensorget(self, key, as_type=Tensor, meta_only=False):
-        # type: (AnyStr, Type[Tensor], bool) -> Tensor
+        # type: (AnyStr, Type[Tensor], bool) -> Union[Tensor, BlobTensor]
         """
         Retrieve the value of a tensor from the server
         :param key: the name of the tensor
