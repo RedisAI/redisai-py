@@ -8,7 +8,7 @@
 # RedisAI Python Client
 
 
-## Installing
+## Installation
 
 1. Install Redis 5.0 or above
 
@@ -20,6 +20,49 @@
 $ pip install redisai
 ```
 
-[RedisAI example repo](https://github.com/RedisAI/redisai-examples) shows few examples made using redisai-py under `python_client` section.
+4. Install serialization-deserialization utility (optional)
+```sh
+$ pip install ml2rt
+```
+
+[RedisAI example repo](https://github.com/RedisAI/redisai-examples) shows few examples made using redisai-py under `python_client` section. Checkout [ml2rt](https://github.com/hhsecond/ml2rt) for convenient functions those might help in converting models (sparkml, sklearn, xgboost to ONNX), serializing models to disk, loading it back to redisai-py etc.
+
+For a quick walk through, checkout this example
+
+```python
+from redisai import Client
+from redisai import Tensor, BlobTensor, DType, Device, Backend
+import ml2rt
+
+client = Client()
+client.tensorset('x', Tensor(DType.float, [2], [2, 3]))
+t = client.tensorget('x')
+print(t.value)
+
+model = mlut.load_model('test/testdata/graph.pb')
+client.tensorset('a', Tensor.scalar(DType.float, 2, 3))
+client.tensorset('b', Tensor.scalar(DType.float, 12, 10))
+client.modelset('m', Backend.tf,
+                Device.cpu,
+                input=['a', 'b'],
+                output='mul',
+                data=model)
+client.modelrun('m', ['a', 'b'], ['mul'])
+print(client.tensorget('mul').value)
+
+# Try with a script
+script = mlut.load_script('test/testdata/script.txt')
+client.scriptset('ket', Device.cpu, script)
+client.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
+
+b1 = client.tensorget('c', as_type=BlobTensor)
+b2 = client.tensorget('c', as_type=BlobTensor)
+
+client.tensorset('d', BlobTensor(DType.float, b1.shape, b1, b2))
+
+tnp = b1.to_numpy()
+print(tnp)
+
+```
 
 

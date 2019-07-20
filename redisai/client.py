@@ -9,7 +9,7 @@ except ImportError:
     np = None
 
 try:
-    from typing import Union, Any, AnyStr, ByteString, Collection, Type
+    from typing import Union, Any, AnyStr, ByteString, Collection, Type  # noqa
 except ImportError:
     pass
 
@@ -165,7 +165,7 @@ class BlobTensor(Tensor):
         }
         if t in mm:
             return mm[t]
-        return t
+        return t.lower()
 
     @classmethod
     def from_resp(cls, dtype, shape, value):
@@ -225,7 +225,7 @@ class Client(StrictRedis):
         return self.execute_command(*args)
 
     def tensorget(self, key, as_type=Tensor, meta_only=False):
-        # type: (AnyStr, Type[Tensor], bool) -> Tensor
+        # type: (AnyStr, Type[Tensor], bool) -> Union[Tensor, BlobTensor]
         """
         Retrieve the value of a tensor from the server
         :param key: the name of the tensor
