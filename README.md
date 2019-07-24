@@ -39,7 +39,7 @@ client.tensorset('x', Tensor(DType.float, [2], [2, 3]))
 t = client.tensorget('x')
 print(t.value)
 
-model = mlut.load_model('test/testdata/graph.pb')
+model = ml2rt.load_model('test/testdata/graph.pb')
 client.tensorset('a', Tensor.scalar(DType.float, 2, 3))
 client.tensorset('b', Tensor.scalar(DType.float, 12, 10))
 client.modelset('m', Backend.tf,
@@ -51,7 +51,7 @@ client.modelrun('m', ['a', 'b'], ['mul'])
 print(client.tensorget('mul').value)
 
 # Try with a script
-script = mlut.load_script('test/testdata/script.txt')
+script = ml2rt.load_script('test/testdata/script.txt')
 client.scriptset('ket', Device.cpu, script)
 client.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
 
