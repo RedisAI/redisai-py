@@ -40,9 +40,14 @@ class ClientTestCase(TestCase):
 
     def test_numpy_tensor(self):
         con = self.get_client()
-        con.tensorset('x', np.array([2, 3]))
+        input_array = np.array([2, 3])
+        con.tensorset('x', input_array)
         values = con.tensorget('x').value
         self.assertEqual([2, 3], values)
+        values = con.tensorget('x', as_type=BlobTensor)
+        self.assertTrue(np.allclose(input_array, values.to_numpy()))
+        ret = con.tensorset('x', values)
+        self.assertEqual(ret, b'OK')
 
     def test_run_tf_model(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
