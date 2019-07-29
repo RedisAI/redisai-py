@@ -54,7 +54,7 @@ def _convert_to_num(dt, arr):
         if isinstance(obj, list):
             _convert_to_num(obj)
         else:
-            if dt in (DType.float.value, DType.double.value):
+            if dt in (DType.float, DType.double):
                 arr[ix] = float(obj)
             else:
                 arr[ix] = int(obj)
@@ -159,6 +159,8 @@ class BlobTensor(Tensor):
 
     @staticmethod
     def _to_numpy_type(t):
+        if isinstance(t, DType):
+            t = t.value
         mm = {
             'FLOAT': 'float32',
             'DOUBLE': 'float64'
@@ -237,10 +239,11 @@ class Client(StrictRedis):
         argname = 'META' if meta_only else as_type.ARGNAME
         res = self.execute_command('AI.TENSORGET', key, argname)
         dtype, shape = to_string(res[0]), res[1]
+        dt = DType.__members__[dtype.lower()]
         if meta_only:
-            return as_type(dtype, shape, [])
+            return as_type(dt, shape, [])
         else:
-            return as_type.from_resp(dtype, shape, res[2])
+            return as_type.from_resp(dt, shape, res[2])
 
     def scriptset(self, name, device, script):
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)

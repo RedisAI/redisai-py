@@ -2,13 +2,17 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
-exec(open('redisai/version.py').read())
+exec(open('redisai/version.py', encoding='utf-8').read())
+with open('README.md') as f:
+    long_description = f.read()
+
 
 setup(
     name='redisai',
     version=__version__,  # comes from redisai/version.py
-
     description='RedisAI Python Client',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='http://github.com/RedisAI/redisai-py',
     author='RedisLabs',
     author_email='oss@redislabs.com',
