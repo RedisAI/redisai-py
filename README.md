@@ -31,11 +31,14 @@ For a quick walk through, checkout this example
 
 ```python
 from redisai import Client
+import numpy as np
 from redisai import Tensor, BlobTensor, DType, Device, Backend
 import ml2rt
 
 client = Client()
-client.tensorset('x', Tensor(DType.float, [2], [2, 3]))
+arr = np.array([2, 3])
+# `tensorset` accepts `numpy` array or `redisai.Tensor` objects
+client.tensorset('x', arr)
 t = client.tensorget('x')
 print(t.value)
 
@@ -62,7 +65,6 @@ client.tensorset('d', BlobTensor(DType.float, b1.shape, b1, b2))
 
 tnp = b1.to_numpy()
 print(tnp)
-
 ```
 
 
