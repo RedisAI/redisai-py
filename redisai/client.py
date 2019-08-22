@@ -201,6 +201,9 @@ class Client(StrictRedis):
             'data': rv[2]
         }
 
+    def modeldel(self, name):
+        return self.execute_command('AI.MODELDEL', name)
+
     def modelrun(self,
                  name,
                  input,  # type: Union[AnyStr|Collection[AnyStr]]
@@ -254,6 +257,9 @@ class Client(StrictRedis):
             'device': to_string(r[0]),
             'script': to_string(r[1])
         }
+
+    def scriptdel(self, name):
+        return self.execute_command('AI.SCRIPTDEL', name)
 
     def scriptrun(self,
                   name,
