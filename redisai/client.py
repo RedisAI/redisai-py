@@ -62,6 +62,8 @@ class Client(StrictRedis):
         """
         if np and isinstance(tensor, np.ndarray):
             tensor = BlobTensor.from_numpy(tensor)
+        elif hasattr(tensor, 'shape') and hasattr(tensor, 'dtype'):
+            raise TypeError('Numpy is not installed but the input tensor seem to be a numpy array')
         args = ['AI.TENSORSET', key, tensor.type.value]
         args += tensor.shape
         args += [tensor.ARGNAME]

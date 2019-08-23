@@ -1,18 +1,18 @@
-import numpy as np
 from .utils import convert_to_num
 from .constants import DType
+from typing import Union, ByteString, Collection
 try:
-    from typing import Union, Any, AnyStr, ByteString, Collection, Type
-except ImportError:
-    pass
+    import numpy as np
+except (ImportError, ModuleNotFoundError):
+    np = None
 
 
 class Tensor(object):
     ARGNAME = 'VALUES'
 
     def __init__(self,
-                 dtype,  # type: DType
-                 shape,  # type: Collection[int]
+                 dtype: DType,
+                 shape: Collection[int],
                  value):
         """
         Declare a tensor suitable for passing to tensorset
@@ -41,14 +41,12 @@ class Tensor(object):
             id=id(self))
 
     @classmethod
-    def from_resp(cls, dtype, shape, value):
-        # recurse value, replacing each element of b'' with the
-        # appropriate element
+    def from_resp(cls, dtype: DType, shape: Collection[int], value) -> 'Tensor':
         convert_to_num(dtype, value)
         return cls(dtype, shape, value)
 
     @classmethod
-    def scalar(cls, dtype, *items):
+    def scalar(cls, dtype: DType, *items) -> 'Tensor':
         """
         Create a tensor from a list of numbers
         :param dtype: Type to use for storage
@@ -62,9 +60,9 @@ class BlobTensor(Tensor):
     ARGNAME = 'BLOB'
 
     def __init__(self,
-                 dtype,
-                 shape,  # type: Collection[int]
-                 *blobs  # type: Union[BlobTensor, ByteString]
+                 dtype: DType,
+                 shape: Collection[int],
+                 *blobs: Union['BlobTensor', ByteString]
                  ):
         """
         Create a tensor from a binary blob
@@ -79,16 +77,15 @@ class BlobTensor(Tensor):
                     b = b.value[0]
                 blobarr += b
             size = len(blobs)
-            blobs = bytes(blobarr)
+            ret_blobs = bytes(blobarr)
             shape = [size] + list(shape)
         else:
-            blobs = bytes(blobs[0])
+            ret_blobs = bytes(blobs[0])
 
-        super(BlobTensor, self).__init__(dtype, shape, blobs)
+        super(BlobTensor, self).__init__(dtype, shape, ret_blobs)
 
     @classmethod
-    def from_numpy(cls, *nparrs):
-        # type: (type, np.array) -> BlobTensor
+    def from_numpy(cls, *nparrs) -> 'BlobTensor':
         blobs = []
         for arr in nparrs:
             blobs.append(arr.data)
@@ -99,8 +96,7 @@ class BlobTensor(Tensor):
     def blob(self):
         return self.value[0]
 
-    def to_numpy(self):
-        # type: () -> np.array
+    def to_numpy(self) -> np.array:
         a = np.frombuffer(self.value[0], dtype=self._to_numpy_type(self.type))
         return a.reshape(self.shape)
 
@@ -117,5 +113,5 @@ class BlobTensor(Tensor):
         return t.lower()
 
     @classmethod
-    def from_resp(cls, dtype, shape, value):
+    def from_resp(cls, dtype, shape, value) -> 'BlobTensor':
         return cls(dtype, shape, value)

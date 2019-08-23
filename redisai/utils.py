@@ -17,11 +17,18 @@ def str_or_strlist(v):
     return v
 
 
-def convert_to_num(dt, arr):
+def convert_to_num(dt: DType, arr) -> None:
+    """
+    Recurse value, replacing each element of b'' with the appropriate element.
+    Function doesn't return anything but does inplace operation which updates `arr`
+
+    :param dt: Type of tensor | array
+    :param arr: The array with b'' numbers or recursive array of b''
+    """
     for ix in six.moves.range(len(arr)):
         obj = arr[ix]
         if isinstance(obj, list):
-            convert_to_num(obj)
+            convert_to_num(dt, obj)
         else:
             if dt in (DType.float, DType.double):
                 arr[ix] = float(obj)
