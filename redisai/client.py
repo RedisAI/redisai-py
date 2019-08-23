@@ -15,6 +15,18 @@ class Client(StrictRedis):
     """
     RedisAI client that can call Redis with RedisAI specific commands
     """
+    def loadbackend(self, identifier: AnyStr, path: AnyStr) -> AnyStr:
+        """
+        RedisAI by default won't load any backends. User can either explicitly
+        load the backend by using this function or let RedisAI load the required
+        backend from the default path on-demand.
+
+        :param identifier: String representing which backend. Allowed values - TF, TORCH & ONNX
+        :param path: Path to the shared object of the backend
+        :return: byte string represents success or failure
+        """
+        return self.execute_command('AI.CONFIG LOADBACKEND', identifier, path)
+
     def modelset(self,
                  name: AnyStr,
                  backend: Backend,
