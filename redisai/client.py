@@ -1,199 +1,39 @@
-from enum import Enum
 from redis import StrictRedis
-from ._util import to_string
-import six
+from typing import Union, Any, AnyStr, ByteString, Collection, Type
 
 try:
     import numpy as np
 except ImportError:
     np = None
 
-try:
-    from typing import Union, Any, AnyStr, ByteString, Collection, Type  # noqa
-except ImportError:
-    pass
-
-
-class Device(Enum):
-    cpu = 'CPU'
-    gpu = 'GPU'
-
-
-class Backend(Enum):
-    tf = 'TF'
-    torch = 'TORCH'
-    onnx = 'ONNX'
-
-
-class DType(Enum):
-    float = 'FLOAT'
-    double = 'DOUBLE'
-    int8 = 'INT8'
-    int16 = 'INT16'
-    int32 = 'INT32'
-    int64 = 'INT64'
-    uint8 = 'UINT8'
-    uint16 = 'UINT16'
-    uint32 = 'UINT32'
-    uint64 = 'UINT64'
-
-    # aliases
-    float32 = 'FLOAT'
-    float64 = 'DOUBLE'
-
-
-def _str_or_strlist(v):
-    if isinstance(v, six.string_types):
-        return [v]
-    return v
-
-
-def _convert_to_num(dt, arr):
-    for ix in six.moves.range(len(arr)):
-        obj = arr[ix]
-        if isinstance(obj, list):
-            _convert_to_num(obj)
-        else:
-            if dt in (DType.float, DType.double):
-                arr[ix] = float(obj)
-            else:
-                arr[ix] = int(obj)
-
-
-class Tensor(object):
-    ARGNAME = 'VALUES'
-
-    def __init__(self,
-                 dtype,  # type: DType
-                 shape,  # type: Collection[int]
-                 value):
-        """
-        Declare a tensor suitable for passing to tensorset
-        :param dtype: The type the values should be stored as.
-            This can be one of Tensor.FLOAT, tensor.DOUBLE, etc.
-        :param shape: An array describing the shape of the tensor. For an
-            image 250x250 with three channels, this would be [250, 250, 3]
-        :param value: The value for the tensor. Can be an array.
-            The contents must coordinate with the shape, meaning that the
-            overall length needs to be the product of all figures in the
-            shape. There is no verification to ensure that each dimension
-            is correct. Your application must ensure that the ordering
-            is always consistent.
-        """
-        self.type = dtype
-        self.shape = list(shape)
-        self.value = value
-        if not isinstance(value, (list, tuple)):
-            self.value = [value]
-
-    def __repr__(self):
-        return '<{c.__class__.__name__}(shape={s} type={t}) at 0x{id:x}>'.format(
-            c=self,
-            s=self.shape,
-            t=self.type,
-            id=id(self))
-
-    @classmethod
-    def from_resp(cls, dtype, shape, value):
-        # recurse value, replacing each element of b'' with the
-        # appropriate element
-        _convert_to_num(dtype, value)
-        return cls(dtype, shape, value)
-
-    @classmethod
-    def scalar(cls, dtype, *items):
-        """
-        Create a tensor from a list of numbers
-        :param dtype: Type to use for storage
-        :param items: One or more items
-        :return: Tensor
-        """
-        return cls(dtype, [len(items)], items)
-
-
-class BlobTensor(Tensor):
-    ARGNAME = 'BLOB'
-
-    def __init__(self,
-                 dtype,
-                 shape,  # type: Collection[int]
-                 *blobs  # type: Union[BlobTensor, ByteString]
-                 ):
-        """
-        Create a tensor from a binary blob
-        :param dtype: The datatype, one of Tensor.FLOAT, Tensor.DOUBLE, etc.
-        :param shape: An array
-        :param blobs: One or more blobs to assign to the tensor.
-        """
-        if len(blobs) > 1:
-            blobarr = bytearray()
-            for b in blobs:
-                if isinstance(b, BlobTensor):
-                    b = b.value[0]
-                blobarr += b
-            size = len(blobs)
-            blobs = bytes(blobarr)
-            shape = [size] + list(shape)
-        else:
-            blobs = bytes(blobs[0])
-
-        super(BlobTensor, self).__init__(dtype, shape, blobs)
-
-    @classmethod
-    def from_numpy(cls, *nparrs):
-        # type: (type, np.array) -> BlobTensor
-        blobs = []
-        for arr in nparrs:
-            blobs.append(arr.data)
-        dt = DType.__members__[str(nparrs[0].dtype)]
-        return cls(dt, nparrs[0].shape, *blobs)
-
-    @property
-    def blob(self):
-        return self.value[0]
-
-    def to_numpy(self):
-        # type: () -> np.array
-        a = np.frombuffer(self.value[0], dtype=self._to_numpy_type(self.type))
-        return a.reshape(self.shape)
-
-    @staticmethod
-    def _to_numpy_type(t):
-        if isinstance(t, DType):
-            t = t.value
-        mm = {
-            'FLOAT': 'float32',
-            'DOUBLE': 'float64'
-        }
-        if t in mm:
-            return mm[t]
-        return t.lower()
-
-    @classmethod
-    def from_resp(cls, dtype, shape, value):
-        return cls(dtype, shape, value)
+from .constants import Backend, Device, DType
+from .utils import str_or_strlist, to_string
+from .tensor import Tensor, BlobTensor
 
 
 class Client(StrictRedis):
+    """
+    RedisAI client that can call Redis with RedisAI specific commands
+    """
     def modelset(self,
-                 name,  # type: AnyStr
-                 backend,  # type: Backend
-                 device,  # type: Device
-                 data,  # type: ByteString
-                 input=None,  # type: Union[AnyStr|Collection[AnyStr]|None]
-                 output=None  # type: Union[AnyStr|Collection[AnyStr]|None]
-                 ):
+                 name: AnyStr,
+                 backend: Backend,
+                 device: Device,
+                 data: ByteString,
+                 input: Union[AnyStr, Collection[AnyStr], None] = None,
+                 output: Union[AnyStr, Collection[AnyStr], None] = None
+                 ) -> AnyStr:
         args = ['AI.MODELSET', name, backend.value, device.value]
         if backend == Backend.tf:
             if not(all((input, output))):
                 raise ValueError(
                     'Require keyword arguments input and output for TF models')
-            args += ['INPUTS'] + _str_or_strlist(input)
-            args += ['OUTPUTS'] + _str_or_strlist(output)
+            args += ['INPUTS'] + str_or_strlist(input)
+            args += ['OUTPUTS'] + str_or_strlist(output)
         args += [data]
         return self.execute_command(*args)
 
-    def modelget(self, name):
+    def modelget(self, name: AnyStr) -> dict:
         rv = self.execute_command('AI.MODELGET', name)
         return {
             'backend': Backend(rv[0]),
@@ -201,21 +41,20 @@ class Client(StrictRedis):
             'data': rv[2]
         }
 
-    def modeldel(self, name):
+    def modeldel(self, name: AnyStr) -> AnyStr:
         return self.execute_command('AI.MODELDEL', name)
 
     def modelrun(self,
-                 name,
-                 input,  # type: Union[AnyStr|Collection[AnyStr]]
-                 output  # type: Union[AnyStr|Collection[AnyStr]]
-                 ):
+                 name: AnyStr,
+                 input: Union[AnyStr, Collection[AnyStr]],
+                 output: Union[AnyStr, Collection[AnyStr]]
+                 ) -> AnyStr:
         args = ['AI.MODELRUN', name]
-        args += ['INPUTS'] + _str_or_strlist(input)
-        args += ['OUTPUTS'] + _str_or_strlist(output)
+        args += ['INPUTS'] + str_or_strlist(input)
+        args += ['OUTPUTS'] + str_or_strlist(output)
         return self.execute_command(*args)
 
-    def tensorset(self, key, tensor):
-        # type: (Client, AnyStr, Union[Tensor, np.ndarray]) -> Any
+    def tensorset(self, key: AnyStr, tensor: Union[Tensor, np.ndarray]) -> Any:
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
@@ -229,8 +68,9 @@ class Client(StrictRedis):
         args += tensor.value
         return self.execute_command(*args)
 
-    def tensorget(self, key, as_type=Tensor, meta_only=False):
-        # type: (AnyStr, Type[Tensor], bool) -> Union[Tensor, BlobTensor]
+    def tensorget(self,
+                  key: AnyStr, as_type: Type[Tensor] = Tensor,
+                  meta_only: bool = False) -> Union[Tensor, BlobTensor]:
         """
         Retrieve the value of a tensor from the server
         :param key: the name of the tensor
@@ -248,10 +88,10 @@ class Client(StrictRedis):
         else:
             return as_type.from_resp(dt, shape, res[2])
 
-    def scriptset(self, name, device, script):
+    def scriptset(self, name: AnyStr, device: Device, script: AnyStr) -> AnyStr:
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)
 
-    def scriptget(self, name):
+    def scriptget(self, name: AnyStr) -> dict:
         r = self.execute_command('AI.SCRIPTGET', name)
         return {
             'device': to_string(r[0]),
@@ -262,13 +102,13 @@ class Client(StrictRedis):
         return self.execute_command('AI.SCRIPTDEL', name)
 
     def scriptrun(self,
-                  name,
-                  function,  # type: AnyStr
-                  input,  # type: Union[AnyStr|Collection[AnyStr]]
-                  output  # type: Union[AnyStr|Collection[AnyStr]]
-                  ):
+                  name: AnyStr,
+                  function: AnyStr,
+                  input: Union[AnyStr, Collection[AnyStr]],
+                  output: Union[AnyStr, Collection[AnyStr]]
+                  ) -> AnyStr:
         args = ['AI.SCRIPTRUN', name, function, 'INPUTS']
-        args += _str_or_strlist(input)
+        args += str_or_strlist(input)
         args += ['OUTPUTS']
-        args += _str_or_strlist(output)
+        args += str_or_strlist(output)
         return self.execute_command(*args)
