@@ -66,16 +66,26 @@ class Client(StrictRedis):
         args += ['OUTPUTS'] + str_or_strlist(output)
         return self.execute_command(*args)
 
-    def tensorset(self, key: AnyStr, tensor: Union[Tensor, np.ndarray]) -> Any:
+    def tensorset(self,
+                  key: AnyStr,
+                  tensor: Union[Tensor, np.ndarray, list, tuple],
+                  shape: Union[Collection[int], None] = None,
+                  dtype: Union[DType, None] = None) -> Any:
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
         :param tensor: a `Tensor` object
+        :param shape: Shape of the tensor. Required if input is a sequence of ints/floats
+        :param dtype: data type of the tensor. Required if input is a sequence of ints/floats
         """
+        # TODO: tensorset will not accept BlobTensor or Tensor object in the future.
+        # Keeping it in the current version for compatibility with the example repo
         if np and isinstance(tensor, np.ndarray):
             tensor = BlobTensor.from_numpy(tensor)
         elif hasattr(tensor, 'shape') and hasattr(tensor, 'dtype'):
             raise TypeError('Numpy is not installed but the input tensor seem to be a numpy array')
+        elif isinstance(tensor, (list, tuple)):
+            tensor = Tensor(dtype, shape, tensor)
         args = ['AI.TENSORSET', key, tensor.type.value]
         args += tensor.shape
         args += [tensor.ARGNAME]
@@ -83,22 +93,33 @@ class Client(StrictRedis):
         return self.execute_command(*args)
 
     def tensorget(self,
-                  key: AnyStr, as_type: Type[Tensor] = Tensor,
+                  key: AnyStr, as_type: Type[Tensor] = None,
                   meta_only: bool = False) -> Union[Tensor, BlobTensor]:
         """
-        Retrieve the value of a tensor from the server
+        Retrieve the value of a tensor from the server. By default it returns the numpy array
+        but it can be controlled using `as_type` argument and `meta_only` argument.
         :param key: the name of the tensor
-        :param as_type: the resultant tensor type
+        :param as_type: the resultant tensor type. Returns numpy array if None
         :param meta_only: if true, then the value is not retrieved,
             only the shape and the type
         :return: an instance of as_type
         """
-        argname = 'META' if meta_only else as_type.ARGNAME
+        # TODO; We might remove Tensor & BlobTensor in the future and `tensorget` will return
+        # python list or numpy arrays or a namedtuple
+        if meta_only:
+            argname = 'META'
+        elif as_type is None:
+            argname = BlobTensor.ARGNAME
+        else:
+            argname = as_type.ARGNAME
+
         res = self.execute_command('AI.TENSORGET', key, argname)
         dtype, shape = to_string(res[0]), res[1]
         dt = DType.__members__[dtype.lower()]
         if meta_only:
-            return as_type(dt, shape, [])
+            return Tensor(dt, shape, [])
+        elif as_type is None:
+            return BlobTensor.from_resp(dt, shape, res[2]).to_numpy()
         else:
             return as_type.from_resp(dt, shape, res[2])
 
