@@ -63,13 +63,13 @@ class ClientTestCase(TestCase):
 
         con = self.get_client()
         con.modelset('m', Backend.tf, Device.cpu, model_pb,
-                     input=['a', 'b'], output='mul')
+                     inputs=['a', 'b'], outputs='mul')
 
         # wrong model
         self.assertRaises(ResponseError,
                           con.modelset, 'm', Backend.tf, Device.cpu,
                           wrong_model_pb,
-                          input=['a', 'b'], output='mul')
+                          inputs=['a', 'b'], outputs='mul')
         # missing inputs/outputs
         self.assertRaises(ValueError,
                           con.modelset, 'm', Backend.tf, Device.cpu,
@@ -79,7 +79,7 @@ class ClientTestCase(TestCase):
         self.assertRaises(ResponseError,
                           con.modelset, 'm', Backend.torch, Device.cpu,
                           model_pb,
-                          input=['a', 'b'], output='mul')
+                          inputs=['a', 'b'], outputs='mul')
 
         con.tensorset('a', Tensor.scalar(DType.float, 2, 3))
         con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
@@ -99,8 +99,8 @@ def bar(a, b):
         con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
         # try with bad arguments:
         self.assertRaises(ResponseError,
-                          con.scriptrun, 'ket', 'bar', input='a', output='c')
-        con.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
+                          con.scriptrun, 'ket', 'bar', inputs='a', outputs='c')
+        con.scriptrun('ket', 'bar', inputs=['a', 'b'], outputs='c')
         tensor = con.tensorget('c', as_type=Tensor)
         self.assertEqual([4, 6], tensor.value)
 
