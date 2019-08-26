@@ -27,13 +27,15 @@ class ClientTestCase(TestCase):
 
     def test_set_tensor(self):
         con = self.get_client()
-        con.tensorset('x', Tensor.scalar(DType.float, 2, 3))
+        con.tensorset('x', (2, 3), dtype=DType.float)
         values = con.tensorget('x', as_type=Tensor)
         self.assertEqual([2, 3], values.value)
 
         con.tensorset('x', Tensor.scalar(DType.int32, 2, 3))
         values = con.tensorget('x', as_type=Tensor).value
         self.assertEqual([2, 3], values)
+        meta = con.tensorget('x', meta_only=True)
+        self.assertTrue('<Tensor(shape=[2] type=DType.int32) at ' in repr(meta))
 
         self.assertRaises(Exception, con.tensorset, 1)
         self.assertRaises(Exception, con.tensorset, 'x')
@@ -86,15 +88,21 @@ class ClientTestCase(TestCase):
         con.modelrun('m', ['a', 'b'], 'c')
         tensor = con.tensorget('c')
         self.assertTrue(np.allclose([4, 9], tensor))
+        model_det = con.modelget('m')
+        self.assertTrue(model_det['backend'] == Backend.tf)
+        self.assertTrue(model_det['device'] == Device.cpu)
+        con.modeldel('m')
+        self.assertRaises(ResponseError, con.modelget, 'm')
 
     def test_scripts(self):
         con = self.get_client()
         self.assertRaises(ResponseError, con.scriptset,
                           'ket', Device.cpu, 'return 1')
-        con.scriptset('ket', Device.cpu, r"""
+        script = r"""
 def bar(a, b):
     return a + b
-""")
+"""
+        con.scriptset('ket', Device.cpu, script)
         con.tensorset('a', Tensor.scalar(DType.float, 2, 3))
         con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
         # try with bad arguments:
@@ -103,6 +111,12 @@ def bar(a, b):
         con.scriptrun('ket', 'bar', inputs=['a', 'b'], outputs='c')
         tensor = con.tensorget('c', as_type=Tensor)
         self.assertEqual([4, 6], tensor.value)
+        script_det = con.scriptget('ket')
+        self.assertTrue(script_det['device'] == Device.cpu)
+        self.assertTrue(script_det['script'] == script)
+        self.assertTrue("def bar(a, b):" in script_det['script'])
+        con.scriptdel('ket')
+        self.assertRaises(ResponseError, con.scriptget, 'ket')
 
     def test_run_onnxml_model(self):
         mlmodel_path = os.path.join(MODEL_DIR, 'boston.onnx')

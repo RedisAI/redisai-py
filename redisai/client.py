@@ -48,8 +48,8 @@ class Client(StrictRedis):
     def modelget(self, name: AnyStr) -> dict:
         rv = self.execute_command('AI.MODELGET', name)
         return {
-            'backend': Backend(rv[0]),
-            'device': Device(rv[1]),
+            'backend': Backend(to_string(rv[0])),
+            'device': Device(to_string(rv[1])),
             'data': rv[2]
         }
 
@@ -128,8 +128,9 @@ class Client(StrictRedis):
 
     def scriptget(self, name: AnyStr) -> dict:
         r = self.execute_command('AI.SCRIPTGET', name)
+        device = Device(to_string(r[0]))
         return {
-            'device': to_string(r[0]),
+            'device': device,
             'script': to_string(r[1])
         }
 
