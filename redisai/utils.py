@@ -11,9 +11,12 @@ def to_string(s):
         return s  # Not a string we care about
 
 
-def str_or_strlist(v):
-    if isinstance(v, six.string_types):
-        return [v]
+def str_or_strsequence(v):
+    if not isinstance(v, (list, tuple)):
+        if isinstance(v, six.string_types):
+            return [v]
+        else:
+            raise TypeError('Argument must be a string, list or a tuple')
     return v
 
 

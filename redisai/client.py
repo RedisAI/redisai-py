@@ -7,7 +7,7 @@ except ImportError:
     np = None
 
 from .constants import Backend, Device, DType
-from .utils import str_or_strlist, to_string
+from .utils import str_or_strsequence, to_string
 from .tensor import Tensor, BlobTensor
 
 
@@ -32,16 +32,16 @@ class Client(StrictRedis):
                  backend: Backend,
                  device: Device,
                  data: ByteString,
-                 input: Union[AnyStr, Collection[AnyStr], None] = None,
-                 output: Union[AnyStr, Collection[AnyStr], None] = None
+                 inputs: Union[AnyStr, Collection[AnyStr], None] = None,
+                 outputs: Union[AnyStr, Collection[AnyStr], None] = None
                  ) -> AnyStr:
         args = ['AI.MODELSET', name, backend.value, device.value]
         if backend == Backend.tf:
-            if not(all((input, output))):
+            if not(all((inputs, outputs))):
                 raise ValueError(
                     'Require keyword arguments input and output for TF models')
-            args += ['INPUTS'] + str_or_strlist(input)
-            args += ['OUTPUTS'] + str_or_strlist(output)
+            args += ['INPUTS'] + str_or_strsequence(inputs)
+            args += ['OUTPUTS'] + str_or_strsequence(outputs)
         args += [data]
         return self.execute_command(*args)
 
@@ -58,12 +58,12 @@ class Client(StrictRedis):
 
     def modelrun(self,
                  name: AnyStr,
-                 input: Union[AnyStr, Collection[AnyStr]],
-                 output: Union[AnyStr, Collection[AnyStr]]
+                 inputs: Union[AnyStr, Collection[AnyStr]],
+                 outputs: Union[AnyStr, Collection[AnyStr]]
                  ) -> AnyStr:
         args = ['AI.MODELRUN', name]
-        args += ['INPUTS'] + str_or_strlist(input)
-        args += ['OUTPUTS'] + str_or_strlist(output)
+        args += ['INPUTS'] + str_or_strsequence(inputs)
+        args += ['OUTPUTS'] + str_or_strsequence(outputs)
         return self.execute_command(*args)
 
     def tensorset(self,
@@ -75,16 +75,16 @@ class Client(StrictRedis):
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
         :param tensor: a `Tensor` object
-        :param shape: Shape of the tensor. Required if input is a sequence of ints/floats
+        :param shape: Shape of the tensor
         :param dtype: data type of the tensor. Required if input is a sequence of ints/floats
         """
         # TODO: tensorset will not accept BlobTensor or Tensor object in the future.
         # Keeping it in the current version for compatibility with the example repo
         if np and isinstance(tensor, np.ndarray):
             tensor = BlobTensor.from_numpy(tensor)
-        elif hasattr(tensor, 'shape') and hasattr(tensor, 'dtype'):
-            raise TypeError('Numpy is not installed but the input tensor seem to be a numpy array')
         elif isinstance(tensor, (list, tuple)):
+            if shape is None:
+                shape = (len(tensor),)
             tensor = Tensor(dtype, shape, tensor)
         args = ['AI.TENSORSET', key, tensor.type.value]
         args += tensor.shape
@@ -139,11 +139,11 @@ class Client(StrictRedis):
     def scriptrun(self,
                   name: AnyStr,
                   function: AnyStr,
-                  input: Union[AnyStr, Collection[AnyStr]],
-                  output: Union[AnyStr, Collection[AnyStr]]
+                  inputs: Union[AnyStr, Collection[AnyStr]],
+                  outputs: Union[AnyStr, Collection[AnyStr]]
                   ) -> AnyStr:
         args = ['AI.SCRIPTRUN', name, function, 'INPUTS']
-        args += str_or_strlist(input)
+        args += str_or_strsequence(inputs)
         args += ['OUTPUTS']
-        args += str_or_strlist(output)
+        args += str_or_strsequence(outputs)
         return self.execute_command(*args)
