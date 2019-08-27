@@ -1,6 +1,7 @@
+from typing import Union, ByteString, Collection
+import warnings
 from .utils import convert_to_num
 from .constants import DType
-from typing import Union, ByteString, Collection
 try:
     import numpy as np
 except (ImportError, ModuleNotFoundError):
@@ -14,6 +15,8 @@ class Tensor(object):
                  dtype: DType,
                  shape: Collection[int],
                  value):
+        warnings.warn("Tensor APIs are depricated and "
+                      "will be removed from the future release.", UserWarning)
         """
         Declare a tensor suitable for passing to tensorset
         :param dtype: The type the values should be stored as.
