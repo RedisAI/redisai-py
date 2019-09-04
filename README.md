@@ -27,18 +27,6 @@ $ pip install ml2rt
 
 [RedisAI example repo](https://github.com/RedisAI/redisai-examples) shows few examples made using redisai-py under `python_client` section. Checkout [ml2rt](https://github.com/hhsecond/ml2rt) for convenient functions those might help in converting models (sparkml, sklearn, xgboost to ONNX), serializing models to disk, loading it back to redisai-py etc.
 
-For a quick walk through, checkout this example
-
-```python
-
-
-print(client.tensorget('mul'))
-
-# Try with a script
-script = ml2rt.load_script('test/testdata/script.txt')
-client.scriptset('ket', Device.cpu, script)
-client.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
-```
 
 ## Documentation
 APIs available in redisai-py
