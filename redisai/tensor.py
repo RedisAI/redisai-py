@@ -1,4 +1,4 @@
-from typing import Union, ByteString, Collection
+from typing import Union, ByteString, Sequence
 import warnings
 from .utils import convert_to_num
 from .constants import DType
@@ -13,7 +13,7 @@ class Tensor(object):
 
     def __init__(self,
                  dtype: DType,
-                 shape: Collection[int],
+                 shape: Sequence[int],
                  value):
         warnings.warn("Tensor APIs are depricated and "
                       "will be removed from the future release.", UserWarning)
@@ -44,7 +44,7 @@ class Tensor(object):
             id=id(self))
 
     @classmethod
-    def from_resp(cls, dtype: DType, shape: Collection[int], value) -> 'Tensor':
+    def from_resp(cls, dtype: DType, shape: Sequence[int], value) -> 'Tensor':
         convert_to_num(dtype, value)
         return cls(dtype, shape, value)
 
@@ -64,7 +64,7 @@ class BlobTensor(Tensor):
 
     def __init__(self,
                  dtype: DType,
-                 shape: Collection[int],
+                 shape: Sequence[int],
                  *blobs: Union['BlobTensor', ByteString]
                  ):
         """

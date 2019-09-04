@@ -2,7 +2,11 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
-exec(open('redisai/version.py', encoding='utf-8').read())
+try:
+    exec(open('redisai/version.py', encoding='utf-8').read())
+except TypeError:
+    exec(open('redisai/version.py').read())
+
 with open('README.md') as f:
     long_description = f.read()
 
@@ -18,6 +22,7 @@ setup(
     author_email='oss@redislabs.com',
     packages=find_packages(),
     install_requires=['redis', 'hiredis', 'rmtest'],
+    python_requires='>=3.2',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

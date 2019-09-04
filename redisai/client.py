@@ -1,5 +1,5 @@
 from redis import StrictRedis
-from typing import Union, Any, AnyStr, ByteString, Collection, Type
+from typing import Union, Any, AnyStr, ByteString, Sequence, Type
 
 try:
     import numpy as np
@@ -32,8 +32,8 @@ class Client(StrictRedis):
                  backend: Backend,
                  device: Device,
                  data: ByteString,
-                 inputs: Union[AnyStr, Collection[AnyStr], None] = None,
-                 outputs: Union[AnyStr, Collection[AnyStr], None] = None
+                 inputs: Union[AnyStr, Sequence[AnyStr], None] = None,
+                 outputs: Union[AnyStr, Sequence[AnyStr], None] = None
                  ) -> AnyStr:
         args = ['AI.MODELSET', name, backend.value, device.value]
         if backend == Backend.tf:
@@ -58,8 +58,8 @@ class Client(StrictRedis):
 
     def modelrun(self,
                  name: AnyStr,
-                 inputs: Union[AnyStr, Collection[AnyStr]],
-                 outputs: Union[AnyStr, Collection[AnyStr]]
+                 inputs: Union[AnyStr, Sequence[AnyStr]],
+                 outputs: Union[AnyStr, Sequence[AnyStr]]
                  ) -> AnyStr:
         args = ['AI.MODELRUN', name]
         args += ['INPUTS'] + str_or_strsequence(inputs)
@@ -69,7 +69,7 @@ class Client(StrictRedis):
     def tensorset(self,
                   key: AnyStr,
                   tensor: Union[Tensor, np.ndarray, list, tuple],
-                  shape: Union[Collection[int], None] = None,
+                  shape: Union[Sequence[int], None] = None,
                   dtype: Union[DType, None] = None) -> Any:
         """
         Set the values of the tensor on the server using the provided Tensor object
@@ -140,8 +140,8 @@ class Client(StrictRedis):
     def scriptrun(self,
                   name: AnyStr,
                   function: AnyStr,
-                  inputs: Union[AnyStr, Collection[AnyStr]],
-                  outputs: Union[AnyStr, Collection[AnyStr]]
+                  inputs: Union[AnyStr, Sequence[AnyStr]],
+                  outputs: Union[AnyStr, Sequence[AnyStr]]
                   ) -> AnyStr:
         args = ['AI.SCRIPTRUN', name, function, 'INPUTS']
         args += str_or_strsequence(inputs)
