@@ -46,8 +46,8 @@ from redisai import Client, DType
 client = Client()
 arr = np.array([2, 3])
 client.tensorset('x', arr)
-client.tensorget('y', [1, 2], dtype=DType.float)
-client.tensorget('z', [3, 4, 5, 6], dtype=DType.float, shape=(1, 2, 2))
+client.tensorset('y', [1, 2], dtype=DType.float)
+client.tensorset('z', [3, 4, 5, 6], dtype=DType.float, shape=(1, 2, 2))
 ```
 
 ### tensorget
