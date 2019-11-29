@@ -1,4 +1,5 @@
 from typing import Union, ByteString, Sequence
+from collections import namedtuple
 import warnings
 from .utils import convert_to_num
 from .constants import DType
@@ -8,7 +9,22 @@ except (ImportError, ModuleNotFoundError):
     np = None
 
 
-class Tensor(object):
+Tensor = namedtuple('Tensor', field_names=['value', 'shape', 'dtype', 'argname'])
+
+
+def from_numpy(tensor):
+    dtype = DType.__members__[str(tensor.dtype)]
+    shape = tensor.shape
+    blob = bytes(tensor.data)
+    return Tensor(blob, shape, dtype, 'BLOB')
+
+
+
+#  Not necessary
+#  =======================================================
+
+
+class TensorOld(object):
     ARGNAME = 'VALUES'
 
     def __init__(self,
@@ -59,7 +75,7 @@ class Tensor(object):
         return cls(dtype, [len(items)], items)
 
 
-class BlobTensor(Tensor):
+class BlobTensorOld(Tensor):
     ARGNAME = 'BLOB'
 
     def __init__(self,
