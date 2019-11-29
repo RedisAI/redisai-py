@@ -1,5 +1,7 @@
 from redis import StrictRedis
-from typing import Union, Any, AnyStr, ByteString, Sequence, Type
+from typing import Union, Any, AnyStr, ByteString, Sequence
+from collections import namedtuple
+from .containers import Script, Model, Tensor
 
 try:
     import numpy as np
@@ -8,7 +10,7 @@ except ImportError:
 
 from .constants import Backend, Device, DType
 from .utils import str_or_strsequence, to_string
-from .tensor import Tensor, BlobTensor
+from . import tensorize
 
 
 class Client(StrictRedis):
@@ -47,11 +49,10 @@ class Client(StrictRedis):
 
     def modelget(self, name: AnyStr) -> dict:
         rv = self.execute_command('AI.MODELGET', name)
-        return {
-            'backend': Backend(to_string(rv[0])),
-            'device': Device(to_string(rv[1])),
-            'data': rv[2]
-        }
+        return Model(
+            rv[2],
+            Device(to_string(rv[1])),
+            Backend(to_string(rv[0])))
 
     def modeldel(self, name: AnyStr) -> AnyStr:
         return self.execute_command('AI.MODELDEL', name)
@@ -68,71 +69,64 @@ class Client(StrictRedis):
 
     def tensorset(self,
                   key: AnyStr,
-                  tensor: Union[Tensor, np.ndarray, list, tuple],
+                  tensor: Union[np.ndarray, list, tuple],
                   shape: Union[Sequence[int], None] = None,
                   dtype: Union[DType, None] = None) -> Any:
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
-        :param tensor: a `Tensor` object
-        :param shape: Shape of the tensor
-        :param dtype: data type of the tensor. Required if input is a sequence of ints/floats
+        :param tensor: a `np.ndarray` object or python list or tuple
+        :param shape: Shape of the tensor. Required if `tensor` is list or tuple
+        :param dtype: data type of the tensor. Required if `tensor` is list or tuple
         """
-        # TODO: tensorset will not accept BlobTensor or Tensor object in the future.
-        # Keeping it in the current version for compatibility with the example repo
         if np and isinstance(tensor, np.ndarray):
-            tensor = BlobTensor.from_numpy(tensor)
+            tensor = tensorize.from_numpy(tensor)
         elif isinstance(tensor, (list, tuple)):
             if shape is None:
                 shape = (len(tensor),)
-            tensor = Tensor(dtype, shape, tensor)
-        args = ['AI.TENSORSET', key, tensor.type.value]
-        args += tensor.shape
-        args += [tensor.ARGNAME]
-        args += tensor.value
+            tensor = tensorize.from_sequence(tensor, shape, dtype)
+        args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, *tensor.value]
         return self.execute_command(*args)
 
     def tensorget(self,
-                  key: AnyStr, as_type: Type[Tensor] = None,
-                  meta_only: bool = False) -> Union[Tensor, BlobTensor]:
+                  key: AnyStr, as_numpy: bool = True,
+                  meta_only: bool = False) -> Union[namedtuple, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy array
         but it can be controlled using `as_type` argument and `meta_only` argument.
         :param key: the name of the tensor
-        :param as_type: the resultant tensor type. Returns numpy array if None
+        :param as_numpy: Should it return data as numpy.ndarray.
+            Wraps with namedtuple if False. This flag also decides how to fetch the
+            value from RedisAI server and could have performance implications
         :param meta_only: if true, then the value is not retrieved,
             only the shape and the type
         :return: an instance of as_type
         """
-        # TODO; We might remove Tensor & BlobTensor in the future and `tensorget` will return
-        # python list or numpy arrays or a namedtuple
         if meta_only:
             argname = 'META'
-        elif as_type is None:
-            argname = BlobTensor.ARGNAME
+        elif as_numpy is True:
+            argname = 'BLOB'
         else:
-            argname = as_type.ARGNAME
+            argname = 'VALUES'
 
         res = self.execute_command('AI.TENSORGET', key, argname)
         dtype, shape = to_string(res[0]), res[1]
-        dt = DType.__members__[dtype.lower()]
         if meta_only:
-            return Tensor(dt, shape, [])
-        elif as_type is None:
-            return BlobTensor.from_resp(dt, shape, res[2]).to_numpy()
+            return tensorize.to_sequence([], shape, dtype)
+        if as_numpy is True:
+            # TODO: excpetion handling
+            return tensorize.to_numpy(res[2], shape, dtype)
         else:
-            return as_type.from_resp(dt, shape, res[2])
+            return tensorize.to_sequence(res[2], shape, dtype)
 
     def scriptset(self, name: AnyStr, device: Device, script: AnyStr) -> AnyStr:
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)
 
     def scriptget(self, name: AnyStr) -> dict:
         r = self.execute_command('AI.SCRIPTGET', name)
-        device = Device(to_string(r[0]))
-        return {
-            'device': device,
-            'script': to_string(r[1])
-        }
+        return Script(
+            to_string(r[1]),
+            Device(to_string(r[0])))
 
     def scriptdel(self, name):
         return self.execute_command('AI.SCRIPTDEL', name)

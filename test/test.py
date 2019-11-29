@@ -1,20 +1,12 @@
 from unittest import TestCase
 import numpy as np
 import os.path
-from redisai import Client, DType, Backend, Device, Tensor, BlobTensor
+from redisai import Client, DType, Backend, Device
 from ml2rt import load_model
 from redis.exceptions import ResponseError
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + '/testdata'
-
-
-class TensorTestCase(TestCase):
-    def testTensorShapes(self):
-        t = Tensor(DType.float, [4], [1, 2, 3, 4])
-        self.assertEqual([4], t.shape)
-        t = BlobTensor.from_numpy(np.array([[1, 2, 3], [4, 5, 6]]))
-        self.assertEqual([2, 3], t.shape)
 
 
 class ClientTestCase(TestCase):
@@ -25,23 +17,35 @@ class ClientTestCase(TestCase):
     def get_client(self):
         return Client()
 
-    def test_set_tensor(self):
+    def test_set_non_numpy_tensor(self):
         con = self.get_client()
-        con.tensorset('x', (2, 3), dtype=DType.float)
-        values = con.tensorget('x', as_type=Tensor)
-        self.assertEqual([2, 3], values.value)
+        con.tensorset('x', (2, 3, 4, 5), dtype=DType.float)
+        result = con.tensorget('x', as_numpy=False)
+        self.assertEqual([2, 3, 4, 5], result.value)
+        self.assertEqual((4,), result.shape)
 
-        con.tensorset('x', Tensor.scalar(DType.int32, 2, 3))
-        values = con.tensorget('x', as_type=Tensor).value
-        self.assertEqual([2, 3], values)
-        meta = con.tensorget('x', meta_only=True)
-        self.assertTrue('<Tensor(shape=[2] type=DType.int32) at ' in repr(meta))
+        con.tensorset('x', (2, 3, 4, 5), dtype=DType.int16, shape=(2, 2))
+        result = con.tensorget('x', as_numpy=False)
+        self.assertEqual([2, 3, 4, 5], result.value)
+        self.assertEqual((2, 2), result.shape)
 
-        self.assertRaises(Exception, con.tensorset, 1)
-        self.assertRaises(Exception, con.tensorset, 'x')
+        with self.assertRaises(AttributeError):
+            con.tensorset('x', (2, 3, 4), dtype=DType.int)
+
+        with self.assertRaises(TypeError):
+            con.tensorset('x')
+            con.tensorset(1)
+
+    def test_meta(self):
+        con = self.get_client()
+        con.tensorset('x', (2, 3, 4, 5), dtype=DType.float)
+        result = con.tensorget('x', meta_only=True)
+        self.assertEqual([], result.value)
+        self.assertEqual((4,), result.shape)
 
     def test_numpy_tensor(self):
         con = self.get_client()
+
         input_array = np.array([2, 3])
         con.tensorset('x', input_array)
         values1 = con.tensorget('x')
