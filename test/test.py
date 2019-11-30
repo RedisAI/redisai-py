@@ -48,16 +48,12 @@ class ClientTestCase(TestCase):
 
         input_array = np.array([2, 3])
         con.tensorset('x', input_array)
-        values1 = con.tensorget('x')
-        self.assertTrue(np.allclose([2, 3], values1))
-        self.assertEqual(values1.dtype, np.int64)
-        self.assertEqual(values1.shape, (2,))
-        self.assertTrue((np.allclose(values1, input_array)))
-
-        values2 = con.tensorget('x', as_type=BlobTensor)
-        self.assertTrue(np.allclose(input_array, values2.to_numpy()))
-        self.assertTrue(np.allclose(values1, values2.to_numpy()))
-        ret = con.tensorset('x', values2)
+        values = con.tensorget('x')
+        self.assertTrue(np.allclose([2, 3], values))
+        self.assertEqual(values.dtype, np.int64)
+        self.assertEqual(values.shape, (2,))
+        self.assertTrue((np.allclose(values, input_array)))
+        ret = con.tensorset('x', values)
         self.assertEqual(ret, b'OK')
 
     def test_run_tf_model(self):
@@ -87,14 +83,14 @@ class ClientTestCase(TestCase):
                           model_pb,
                           inputs=['a', 'b'], outputs='mul')
 
-        con.tensorset('a', Tensor.scalar(DType.float, 2, 3))
-        con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
+        con.tensorset('a', (2, 3), dtype=DType.float)
+        con.tensorset('b', (2, 3), dtype=DType.float)
         con.modelrun('m', ['a', 'b'], 'c')
         tensor = con.tensorget('c')
         self.assertTrue(np.allclose([4, 9], tensor))
         model_det = con.modelget('m')
-        self.assertTrue(model_det['backend'] == Backend.tf)
-        self.assertTrue(model_det['device'] == Device.cpu)
+        self.assertTrue(model_det.backend == Backend.tf)
+        self.assertTrue(model_det.device == Device.cpu)
         con.modeldel('m')
         self.assertRaises(ResponseError, con.modelget, 'm')
 
@@ -107,18 +103,18 @@ def bar(a, b):
     return a + b
 """
         con.scriptset('ket', Device.cpu, script)
-        con.tensorset('a', Tensor.scalar(DType.float, 2, 3))
-        con.tensorset('b', Tensor.scalar(DType.float, 2, 3))
+        con.tensorset('a', (2, 3), dtype=DType.float)
+        con.tensorset('b', (2, 3), dtype=DType.float)
         # try with bad arguments:
         self.assertRaises(ResponseError,
                           con.scriptrun, 'ket', 'bar', inputs='a', outputs='c')
         con.scriptrun('ket', 'bar', inputs=['a', 'b'], outputs='c')
-        tensor = con.tensorget('c', as_type=Tensor)
+        tensor = con.tensorget('c', as_numpy=False)
         self.assertEqual([4, 6], tensor.value)
         script_det = con.scriptget('ket')
-        self.assertTrue(script_det['device'] == Device.cpu)
-        self.assertTrue(script_det['script'] == script)
-        self.assertTrue("def bar(a, b):" in script_det['script'])
+        self.assertTrue(script_det.device == Device.cpu)
+        self.assertTrue(script_det.script == script)
+        self.assertTrue("def bar(a, b):" in script_det.script)
         con.scriptdel('ket')
         self.assertRaises(ResponseError, con.scriptget, 'ket')
 
@@ -127,11 +123,11 @@ def bar(a, b):
         onnxml_model = load_model(mlmodel_path)
         con = self.get_client()
         con.modelset("onnx_model", Backend.onnx, Device.cpu, onnxml_model)
-        tensor = BlobTensor.from_numpy(np.ones((1, 13), dtype=np.float32))
+        tensor = np.ones((1, 13)).astype(np.float32)
         con.tensorset("input", tensor)
         con.modelrun("onnx_model", ["input"], ["output"])
-        outtensor = con.tensorget("output", as_type=Tensor)
-        self.assertEqual(int(outtensor.value[0]), 24)
+        outtensor = con.tensorget("output", as_numpy=False)
+        self.assertEqual(int(float(outtensor.value[0])), 24)
 
     def test_run_onnxdl_model(self):
         # A PyTorch model that finds the square
@@ -139,11 +135,8 @@ def bar(a, b):
         onnxdl_model = load_model(dlmodel_path)
         con = self.get_client()
         con.modelset("onnx_model", Backend.onnx, Device.cpu, onnxdl_model)
-        tensor = BlobTensor.from_numpy(np.array((2, 3), dtype=np.float32))
+        tensor = np.array((2,)).astype(np.float32)
         con.tensorset("input", tensor)
         con.modelrun("onnx_model", ["input"], ["output"])
         outtensor = con.tensorget("output")
-        self.assertTrue(np.allclose(outtensor, [4.0, 9.0]))
-
-
-# TODO: image/blob tests; more numpy tests..
+        self.assertTrue(np.allclose(outtensor, [4.0]))

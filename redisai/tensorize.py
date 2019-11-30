@@ -39,6 +39,6 @@ def to_numpy(value, shape, dtype):
 
 def to_sequence(value, shape, dtype):
     # TODO: what's the need for this? add test cases
-    convert_to_num(dtype, value)
     dtype = DType.__members__[dtype.lower()]
+    convert_to_num(dtype, value)
     return Tensor(value, tuple(shape), dtype, 'VALUES')

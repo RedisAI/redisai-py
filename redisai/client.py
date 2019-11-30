@@ -47,7 +47,7 @@ class Client(StrictRedis):
         args += [data]
         return self.execute_command(*args)
 
-    def modelget(self, name: AnyStr) -> dict:
+    def modelget(self, name: AnyStr) -> Model:
         rv = self.execute_command('AI.MODELGET', name)
         return Model(
             rv[2],
@@ -81,16 +81,17 @@ class Client(StrictRedis):
         """
         if np and isinstance(tensor, np.ndarray):
             tensor = tensorize.from_numpy(tensor)
+            args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, tensor.value]
         elif isinstance(tensor, (list, tuple)):
             if shape is None:
                 shape = (len(tensor),)
             tensor = tensorize.from_sequence(tensor, shape, dtype)
-        args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, *tensor.value]
+            args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, *tensor.value]
         return self.execute_command(*args)
 
     def tensorget(self,
                   key: AnyStr, as_numpy: bool = True,
-                  meta_only: bool = False) -> Union[namedtuple, np.ndarray]:
+                  meta_only: bool = False) -> Union[Tensor, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy array
         but it can be controlled using `as_type` argument and `meta_only` argument.
@@ -122,7 +123,7 @@ class Client(StrictRedis):
     def scriptset(self, name: AnyStr, device: Device, script: AnyStr) -> AnyStr:
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)
 
-    def scriptget(self, name: AnyStr) -> dict:
+    def scriptget(self, name: AnyStr) -> Script:
         r = self.execute_command('AI.SCRIPTGET', name)
         return Script(
             to_string(r[1]),
