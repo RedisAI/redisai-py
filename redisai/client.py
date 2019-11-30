@@ -1,6 +1,5 @@
 from redis import StrictRedis
 from typing import Union, Any, AnyStr, ByteString, Sequence
-from collections import namedtuple
 from .containers import Script, Model, Tensor
 
 try:
@@ -115,7 +114,6 @@ class Client(StrictRedis):
         if meta_only:
             return tensorize.to_sequence([], shape, dtype)
         if as_numpy is True:
-            # TODO: excpetion handling
             return tensorize.to_numpy(res[2], shape, dtype)
         else:
             return tensorize.to_sequence(res[2], shape, dtype)

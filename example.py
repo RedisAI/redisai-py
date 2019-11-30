@@ -1,19 +1,18 @@
-from redisai import Client, Tensor, \
-    BlobTensor, DType, Device, Backend
+from redisai import Client, DType, Device, Backend
 import ml2rt
 
 client = Client()
-client.tensorset('x', Tensor(DType.float, [2], [2, 3]))
+client.tensorset('x', [2, 3], dtype=DType.float)
 t = client.tensorget('x')
 print(t.value)
 
 model = ml2rt.load_model('test/testdata/graph.pb')
-client.tensorset('a', Tensor.scalar(DType.float, 2, 3))
-client.tensorset('b', Tensor.scalar(DType.float, 12, 10))
+client.tensorset('a', (2, 3), dtype=DType.float)
+client.tensorset('b', (12, 10), dtype=DType.float)
 client.modelset('m', Backend.tf,
                 Device.cpu,
-                input=['a', 'b'],
-                output='mul',
+                inputs=['a', 'b'],
+                outputs='mul',
                 data=model)
 client.modelrun('m', ['a', 'b'], ['mul'])
 print(client.tensorget('mul').value)
@@ -21,12 +20,5 @@ print(client.tensorget('mul').value)
 # Try with a script
 script = ml2rt.load_script('test/testdata/script.txt')
 client.scriptset('ket', Device.cpu, script)
-client.scriptrun('ket', 'bar', input=['a', 'b'], output='c')
+client.scriptrun('ket', 'bar', inputs=['a', 'b'], outputs='c')
 
-b1 = client.tensorget('c', as_type=BlobTensor)
-b2 = client.tensorget('c', as_type=BlobTensor)
-
-client.tensorset('d', BlobTensor(DType.float, b1.shape, b1, b2))
-
-tnp = b1.to_numpy()
-client.tensorset('e', tnp)

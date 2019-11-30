@@ -126,6 +126,7 @@ def bar(a, b):
         tensor = np.ones((1, 13)).astype(np.float32)
         con.tensorset("input", tensor)
         con.modelrun("onnx_model", ["input"], ["output"])
+        # tests `convert_to_num`
         outtensor = con.tensorget("output", as_numpy=False)
         self.assertEqual(int(float(outtensor.value[0])), 24)
 

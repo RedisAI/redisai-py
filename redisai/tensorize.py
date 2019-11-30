@@ -7,23 +7,22 @@ try:
 except (ImportError, ModuleNotFoundError):
     np = None
 
-#  TODO: verify the values for None or invalid values
-# TODO: type annotations
 
-
-def from_numpy(tensor):
+def from_numpy(tensor: np.ndarray) -> Tensor:
+    """ Convert the numpy input from user to `Tensor` """
     dtype = DType.__members__[str(tensor.dtype)]
     shape = tensor.shape
     blob = bytes(tensor.data)
     return Tensor(blob, shape, dtype, 'BLOB')
 
 
-def from_sequence(tensor, shape, dtype):
+def from_sequence(tensor: Sequence, shape: Union[list, tuple], dtype: DType) -> Tensor:
+    """ Convert the `list`/`tuple` input from user to `Tensor` """
     return Tensor(tensor, shape, dtype, 'VALUES')
 
 
-def to_numpy(value, shape, dtype):
-    # tOdo exception
+def to_numpy(value: ByteString, shape: Union[list, tuple], dtype: DType) -> np.ndarray:
+    """ Convert `BLOB` result from RedisAI to `np.ndarray` """
     dtype = DType.__members__[dtype.lower()].value
     mm = {
         'FLOAT': 'float32',
@@ -37,8 +36,8 @@ def to_numpy(value, shape, dtype):
     return a.reshape(shape)
 
 
-def to_sequence(value, shape, dtype):
-    # TODO: what's the need for this? add test cases
+def to_sequence(value: list, shape: list, dtype: DType) -> Tensor:
+    """ Convert `VALUES` result from RedisAI to `Tensor` """
     dtype = DType.__members__[dtype.lower()]
     convert_to_num(dtype, value)
     return Tensor(value, tuple(shape), dtype, 'VALUES')
