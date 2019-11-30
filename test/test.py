@@ -141,3 +141,25 @@ def bar(a, b):
         con.modelrun("onnx_model", ["input"], ["output"])
         outtensor = con.tensorget("output")
         self.assertTrue(np.allclose(outtensor, [4.0]))
+
+    def test_run_pytorch_model(self):
+        model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
+        ptmodel = load_model(model_path)
+        con = self.get_client()
+        con.modelset("pt_model", Backend.torch, Device.cpu, ptmodel)
+        con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype=DType.float)
+        con.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype=DType.float)
+        con.modelrun("pt_model", ["a", "b"], "output")
+        output = con.tensorget('output', as_numpy=False)
+        self.assertTrue(np.allclose(output.value, [4, 6, 4, 6]))
+
+    def test_run_tflite_model(self):
+        model_path = os.path.join(MODEL_DIR, 'mnist_model_quant.tflite')
+        tflmodel = load_model(model_path)
+        con = self.get_client()
+        con.modelset("tfl_model", Backend.tflite, Device.cpu, tflmodel)
+        img = np.random.random((1, 1, 28, 28)).astype(np.float)
+        con.tensorset('img', img)
+        con.modelrun("tfl_model", "img", ["output1", "output2"])
+        output = con.tensorget('output1')
+        self.assertTrue(np.allclose(output, [8]))
