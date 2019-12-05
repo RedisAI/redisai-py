@@ -29,6 +29,12 @@ class ClientTestCase(TestCase):
         self.assertEqual([2, 3, 4, 5], result.value)
         self.assertEqual((2, 2), result.shape)
 
+        con.tensorset('x', (2, 3, 4, 5), dtype=np.int16, shape=(2, 2))
+        result = con.tensorget('x', as_numpy=False)
+        self.assertEqual(DType.int16, result.dtype)
+        self.assertEqual([2, 3, 4, 5], result.value)
+        self.assertEqual((2, 2), result.shape)
+
         with self.assertRaises(AttributeError):
             con.tensorset('x', (2, 3, 4), dtype=DType.int)
 

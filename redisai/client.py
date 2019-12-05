@@ -9,7 +9,7 @@ except ImportError:
 
 from .constants import Backend, Device, DType
 from .utils import str_or_strsequence, to_string
-from . import tensorize
+from . import convert
 
 
 class Client(StrictRedis):
@@ -70,7 +70,7 @@ class Client(StrictRedis):
                   key: AnyStr,
                   tensor: Union[np.ndarray, list, tuple],
                   shape: Union[Sequence[int], None] = None,
-                  dtype: Union[DType, None] = None) -> Any:
+                  dtype: Union[DType, type, None] = None) -> Any:
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
@@ -79,12 +79,14 @@ class Client(StrictRedis):
         :param dtype: data type of the tensor. Required if `tensor` is list or tuple
         """
         if np and isinstance(tensor, np.ndarray):
-            tensor = tensorize.from_numpy(tensor)
+            tensor = convert.from_numpy(tensor)
             args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, tensor.value]
         elif isinstance(tensor, (list, tuple)):
             if shape is None:
                 shape = (len(tensor),)
-            tensor = tensorize.from_sequence(tensor, shape, dtype)
+            if not isinstance(dtype, DType):
+                dtype = DType.__members__[np.dtype(dtype).name]
+            tensor = convert.from_sequence(tensor, shape, dtype)
             args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, *tensor.value]
         return self.execute_command(*args)
 
@@ -112,11 +114,11 @@ class Client(StrictRedis):
         res = self.execute_command('AI.TENSORGET', key, argname)
         dtype, shape = to_string(res[0]), res[1]
         if meta_only:
-            return tensorize.to_sequence([], shape, dtype)
+            return convert.to_sequence([], shape, dtype)
         if as_numpy is True:
-            return tensorize.to_numpy(res[2], shape, dtype)
+            return convert.to_numpy(res[2], shape, dtype)
         else:
-            return tensorize.to_sequence(res[2], shape, dtype)
+            return convert.to_sequence(res[2], shape, dtype)
 
     def scriptset(self, name: AnyStr, device: Device, script: AnyStr) -> AnyStr:
         return self.execute_command('AI.SCRIPTSET', name, device.value, script)
