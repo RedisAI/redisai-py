@@ -225,7 +225,7 @@ def myfunc(a, b):
 client.scriptset('script', Device.cpu, script)
 client.tensorget('a', [1, 2], dtype=DType.float)
 client.tensorget('b', [3, 4], dtype=DType.float)
-client.scriptrun('script', 'mufunc', ['a', 'b'], 'out')
+client.scriptrun('script', 'myfunc', ['a', 'b'], 'out')
 out = client.tensorget('out')  # => [4, 6]
 ```
 
