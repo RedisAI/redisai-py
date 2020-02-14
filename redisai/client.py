@@ -33,16 +33,25 @@ class Client(StrictRedis):
                  backend: Backend,
                  device: Device,
                  data: ByteString,
+                 batch: Union[int, None] = None,
+                 minbatch: Union[int, None] = None,
                  inputs: Union[AnyStr, Sequence[AnyStr], None] = None,
                  outputs: Union[AnyStr, Sequence[AnyStr], None] = None
                  ) -> AnyStr:
         args = ['AI.MODELSET', name, backend.value, device.value]
+
+        if batch is not None:
+            args += ['BATCHSIZE', batch]
+        if minbatch is not None:
+            args += ['MINBATCHSIZE', minbatch]
+
         if backend == Backend.tf:
             if not(all((inputs, outputs))):
                 raise ValueError(
                     'Require keyword arguments input and output for TF models')
             args += ['INPUTS'] + str_or_strsequence(inputs)
             args += ['OUTPUTS'] + str_or_strsequence(outputs)
+        print(args)
         args += [data]
         return self.execute_command(*args)
 
