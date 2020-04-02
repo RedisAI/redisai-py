@@ -1,6 +1,7 @@
 from redis import StrictRedis
 from typing import Union, Any, AnyStr, ByteString, Sequence
 from .containers import Script, Model, Tensor
+import warnings
 
 try:
     import numpy as np
@@ -8,7 +9,7 @@ except ImportError:
     np = None
 
 from .constants import Backend, Device, DType
-from .utils import str_or_strsequence, to_string
+from .utils import str_or_strsequence, to_string, list_to_dict
 from . import convert
 
 
@@ -33,10 +34,21 @@ class Client(StrictRedis):
                  backend: Backend,
                  device: Device,
                  data: ByteString,
-                 inputs: Union[AnyStr, Sequence[AnyStr], None] = None,
-                 outputs: Union[AnyStr, Sequence[AnyStr], None] = None
+                 batch: int = None,
+                 minbatch: int = None,
+                 tag: str = None,
+                 inputs: Union[AnyStr, Sequence[AnyStr]] = None,
+                 outputs: Union[AnyStr, Sequence[AnyStr]] = None
                  ) -> AnyStr:
         args = ['AI.MODELSET', name, backend.value, device.value]
+
+        if batch is not None:
+            args += ['BATCHSIZE', batch]
+        if minbatch is not None:
+            args += ['MINBATCHSIZE', minbatch]
+        if tag is not None:
+            args += ['TAG', tag]
+
         if backend == Backend.tf:
             if not(all((inputs, outputs))):
                 raise ValueError(
@@ -46,12 +58,15 @@ class Client(StrictRedis):
         args += [data]
         return self.execute_command(*args)
 
-    def modelget(self, name: AnyStr) -> Model:
-        rv = self.execute_command('AI.MODELGET', name)
+    def modelget(self, name: AnyStr, meta_only=False) -> Model:
+        argname = 'META' if meta_only else 'BLOB'
+        rv = self.execute_command('AI.MODELGET', name, argname)
+        rv = list_to_dict(rv)
         return Model(
-            rv[2],
-            Device(to_string(rv[1])),
-            Backend(to_string(rv[0])))
+            rv.get('blob'),
+            Device(rv['device']),
+            Backend(rv['backend']),
+            rv['tag'])
 
     def modeldel(self, name: AnyStr) -> AnyStr:
         return self.execute_command('AI.MODELDEL', name)
@@ -66,11 +81,16 @@ class Client(StrictRedis):
         args += ['OUTPUTS'] + str_or_strsequence(outputs)
         return self.execute_command(*args)
 
+    def modelist(self):
+        warnings.warn("Experimental: Model List API is experimental and might change "
+                      "in the future without any notice", UserWarning)
+        return self.execute_command("AI._MODELLIST")
+
     def tensorset(self,
                   key: AnyStr,
                   tensor: Union[np.ndarray, list, tuple],
-                  shape: Union[Sequence[int], None] = None,
-                  dtype: Union[DType, type, None] = None) -> Any:
+                  shape: Sequence[int] = None,
+                  dtype: Union[DType, type] = None) -> Any:
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
@@ -120,14 +140,17 @@ class Client(StrictRedis):
         else:
             return convert.to_sequence(res[2], shape, dtype)
 
-    def scriptset(self, name: AnyStr, device: Device, script: AnyStr) -> AnyStr:
-        return self.execute_command('AI.SCRIPTSET', name, device.value, script)
+    def scriptset(self, name: AnyStr, device: Device, script: AnyStr, tag: str = None) -> AnyStr:
+        args = ['AI.SCRIPTSET', name, device.value]
+        if tag:
+            args += ['TAG', tag]
+        args += [script]
+        return self.execute_command(*args)
 
     def scriptget(self, name: AnyStr) -> Script:
-        r = self.execute_command('AI.SCRIPTGET', name)
-        return Script(
-            to_string(r[1]),
-            Device(to_string(r[0])))
+        ret = self.execute_command('AI.SCRIPTGET', name)
+        ret = list_to_dict(ret)
+        return Script(ret['source'], Device(ret['device']), ret['tag'])
 
     def scriptdel(self, name):
         return self.execute_command('AI.SCRIPTDEL', name)
@@ -143,3 +166,15 @@ class Client(StrictRedis):
         args += ['OUTPUTS']
         args += str_or_strsequence(outputs)
         return self.execute_command(*args)
+
+    def scriptlist(self):
+        warnings.warn("Experimental: Script List API is experimental and might change "
+                      "in the future without any notice", UserWarning)
+        return self.execute_command("AI._SCRIPTLIST")
+
+    def infoget(self, key: str) -> dict:
+        ret = self.execute_command('AI.INFO', key)
+        return list_to_dict(ret)
+
+    def inforeset(self, key: str) -> dict:
+        return self.execute_command('AI.INFO', key, 'RESETSTAT')
