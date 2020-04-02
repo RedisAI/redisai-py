@@ -10,6 +10,7 @@ class Backend(Enum):
     tf = 'TF'
     torch = 'TORCH'
     onnx = 'ONNX'
+    tflite = 'TFLITE'
 
 
 class DType(Enum):
