@@ -7,7 +7,10 @@ from redis.exceptions import ResponseError
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + '/testdata'
-
+script = r"""
+def bar(a, b):
+    return a + b
+"""
 
 class ClientTestCase(TestCase):
     def setUp(self):
@@ -71,7 +74,7 @@ class ClientTestCase(TestCase):
 
         con = self.get_client()
         con.modelset('m', Backend.tf, Device.cpu, model_pb,
-                     inputs=['a', 'b'], outputs='mul')
+                     inputs=['a', 'b'], outputs='mul', tag='v1.0')
 
         # wrong model
         self.assertRaises(ResponseError,
@@ -97,6 +100,7 @@ class ClientTestCase(TestCase):
         model_det = con.modelget('m')
         self.assertTrue(model_det.backend == Backend.tf)
         self.assertTrue(model_det.device == Device.cpu)
+        self.assertTrue(model_det.tag == 'v1.0')
         con.modeldel('m')
         self.assertRaises(ResponseError, con.modelget, 'm')
 
@@ -104,10 +108,6 @@ class ClientTestCase(TestCase):
         con = self.get_client()
         self.assertRaises(ResponseError, con.scriptset,
                           'ket', Device.cpu, 'return 1')
-        script = r"""
-def bar(a, b):
-    return a + b
-"""
         con.scriptset('ket', Device.cpu, script)
         con.tensorset('a', (2, 3), dtype=DType.float)
         con.tensorset('b', (2, 3), dtype=DType.float)
@@ -152,7 +152,7 @@ def bar(a, b):
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
         con = self.get_client()
-        con.modelset("pt_model", Backend.torch, Device.cpu, ptmodel)
+        con.modelset("pt_model", Backend.torch, Device.cpu, ptmodel, tag='v1.0')
         con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype=DType.float)
         con.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype=DType.float)
         con.modelrun("pt_model", ["a", "b"], "output")
@@ -169,3 +169,43 @@ def bar(a, b):
         con.modelrun("tfl_model", "img", ["output1", "output2"])
         output = con.tensorget('output1')
         self.assertTrue(np.allclose(output, [8]))
+
+    def test_info(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        con.modelset('m', Backend.tf, Device.cpu, model_pb,
+                     inputs=['a', 'b'], outputs='mul')
+        first_info = con.infoget('m')
+        expected = {'key': 'm', 'type': 'MODEL', 'backend': 'TF', 'device': 'CPU',
+                    'tag': '', 'duration': 0, 'samples': 0, 'calls': 0, 'errors': 0}
+        self.assertEqual(first_info, expected)
+        con.tensorset('a', (2, 3), dtype=DType.float)
+        con.tensorset('b', (2, 3), dtype=DType.float)
+        con.modelrun('m', ['a', 'b'], 'c')
+        con.modelrun('m', ['a', 'b'], 'c')
+        second_info = con.infoget('m')
+        self.assertEqual(second_info['calls'], 2)  # 2 model runs
+        con.inforeset('m')
+        third_info = con.infoget('m')
+        self.assertEqual(first_info, third_info)  # before modelrun and after reset
+
+    def test_model_list(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        con.modelset('m', Backend.tf, Device.cpu, model_pb,
+                     inputs=['a', 'b'], outputs='mul', tag='v1.2')
+        model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
+        ptmodel = load_model(model_path)
+        con = self.get_client()
+        con.modelset("pt_model", Backend.torch, Device.cpu, ptmodel)
+        mlist = con.modelist()
+        self.assertEqual(mlist, [[b'pt_model', b''], [b'm', b'v1.2']])
+
+    def test_script_list(self):
+        con = self.get_client()
+        con.scriptset('ket1', Device.cpu, script, tag='v1.0')
+        con.scriptset('ket2', Device.cpu, script)
+        slist = con.scriptlist()
+        self.assertEqual(slist, [[b'ket1', b'v1.0'], [b'ket2', b'']])

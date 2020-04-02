@@ -20,6 +20,18 @@ def str_or_strsequence(v):
     return v
 
 
+def list_to_dict(l):
+    if len(l) % 2 != 0:
+        raise RuntimeError("Can't unpack the list: {}".format(l))
+    out = {}
+    for i in range(0, len(l), 2):
+        val = l[i + 1]
+        if isinstance(val, bytes):
+            val = val.decode()
+        out[l[i].decode().lower()] = val
+    return out
+
+
 def convert_to_num(dt: DType, arr) -> None:
     """
     Recurse value, replacing each element of b'' with the appropriate element.
