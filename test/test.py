@@ -1,10 +1,24 @@
 # TODO: Test with some errors and exceptions
+from io import StringIO
+import sys
 from unittest import TestCase
 import numpy as np
 import os.path
 from redisai import Client
 from ml2rt import load_model
 from redis.exceptions import ResponseError
+
+
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + '/testdata'
@@ -19,8 +33,8 @@ class ClientTestCase(TestCase):
         super(ClientTestCase, self).setUp()
         self.get_client().flushall()
 
-    def get_client(self):
-        return Client()
+    def get_client(self, debug=False):
+        return Client(debug)
 
     def test_set_non_numpy_tensor(self):
         con = self.get_client()
@@ -34,11 +48,14 @@ class ClientTestCase(TestCase):
         self.assertEqual([2, 3, 4, 5], result['values'])
         self.assertEqual([2, 2], result['shape'])
 
-        con.tensorset('x', (2, 3, 4, 5), dtype='int16', shape=(2, 2))
+        with self.assertRaises(ResponseError):
+            con.tensorset('x', (2, 3, 4, 5), dtype='wrongtype', shape=(2, 2))
+        con.tensorset('x', (2, 3, 4, 5), dtype='int8', shape=(2, 2))
         result = con.tensorget('x', as_numpy=False)
-        self.assertEqual('INT16', result['dtype'])
+        self.assertEqual('INT8', result['dtype'])
         self.assertEqual([2, 3, 4, 5], result['values'])
         self.assertEqual([2, 2], result['shape'])
+        self.assertIn('values', result)
 
         with self.assertRaises(TypeError):
             con.tensorset('x')
@@ -48,6 +65,7 @@ class ClientTestCase(TestCase):
         con = self.get_client()
         con.tensorset('x', (2, 3, 4, 5), dtype='float')
         result = con.tensorget('x', meta_only=True)
+        self.assertNotIn('values', result)
         self.assertEqual([4], result['shape'])
 
     def test_numpy_tensor(self):
@@ -62,6 +80,10 @@ class ClientTestCase(TestCase):
         self.assertTrue((np.allclose(values, input_array)))
         ret = con.tensorset('x', values)
         self.assertEqual(ret, 'OK')
+
+        stringarr = np.array('dummy')
+        with self.assertRaises(TypeError):
+            con.tensorset('trying', stringarr)
 
     def test_run_tf_model(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
@@ -206,3 +228,9 @@ class ClientTestCase(TestCase):
         con.scriptset('ket2', 'cpu', script)
         slist = con.scriptlist()
         self.assertEqual(slist, [['ket1', 'v1.0'], ['ket2', '']])
+
+    def test_debug(self):
+        con = self.get_client(debug=True)
+        with Capturing() as output:
+            con.tensorset('x', (2, 3, 4, 5), dtype='float')
+        self.assertEqual(['AI.TENSORSET x float 4 VALUES 2 3 4 5'], output)

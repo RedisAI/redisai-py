@@ -1,15 +1,30 @@
-from redis import StrictRedis
+from functools import wraps
 from typing import Union, AnyStr, ByteString, List, Sequence
 import warnings
+
+from redis import StrictRedis
 import numpy as np
 
 from . import utils
+
+
+def enable_debug(f):
+    @wraps(f)
+    def wrapper(*args):
+        print(*args)
+        return f(*args)
+    return wrapper
 
 
 class Client(StrictRedis):
     """
     RedisAI client that can call Redis with RedisAI specific commands
     """
+    def __init__(self, debug=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if debug:
+            self.execute_command = enable_debug(super().execute_command)
+
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
         """
         RedisAI by default won't load any backends. User can either explicitly
@@ -80,7 +95,9 @@ class Client(StrictRedis):
                  inputs: List[AnyStr],
                  outputs: List[AnyStr]
                  ) -> str:
-        args = ['AI.MODELRUN', name, 'INPUTS', *inputs, 'OUTPUTS', *outputs]
+        args = ['AI.MODELRUN', name, 'INPUTS'] + inputs
+        args.append('OUTPUTS')
+        args += outputs
         return self.execute_command(*args).decode()
 
     def modelist(self):
@@ -165,7 +182,9 @@ class Client(StrictRedis):
                   inputs: Sequence[AnyStr],
                   outputs: Sequence[AnyStr]
                   ) -> AnyStr:
-        args = ['AI.SCRIPTRUN', name, function, 'INPUTS', *inputs, 'OUTPUTS', *outputs]
+        args = ['AI.SCRIPTRUN', name, function, 'INPUTS'] + inputs
+        args.append('OUTPUTS')
+        args += outputs
         return self.execute_command(*args).decode()
 
     def scriptlist(self):
