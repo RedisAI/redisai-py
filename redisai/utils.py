@@ -1,44 +1,40 @@
 from typing import Union, ByteString, Sequence
 import numpy as np
-from enum import Enum
 
 
-class DType(Enum):
-    float = 'FLOAT'
-    double = 'DOUBLE'
-    int8 = 'INT8'
-    int16 = 'INT16'
-    int32 = 'INT32'
-    int64 = 'INT64'
-    uint8 = 'UINT8'
-    uint16 = 'UINT16'
-    uint32 = 'UINT32'
-    uint64 = 'UINT64'
-    # aliases
-    float32 = 'FLOAT'
-    float64 = 'DOUBLE'
+dtype_dict = {
+    'float': 'FLOAT',
+    'double': 'DOUBLE',
+    'float32': 'FLOAT',
+    'float64': 'DOUBLE',
+    'int8': 'INT8',
+    'int16': 'INT16',
+    'int32': 'INT32',
+    'int64': 'INT64',
+    'uint8': 'UINT8',
+    'uint16': 'UINT16',
+    'uint32': 'UINT32',
+    'uint64': 'UINT64'}
 
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """ Convert the numpy input from user to `Tensor` """
-    # TODO: May be change the DTYPE enum
-    dtype = DType.__members__[str(tensor.dtype)].value
+    try:
+        dtype = dtype_dict[str(tensor.dtype)]
+    except KeyError:
+        raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
     shape = tensor.shape
     blob = bytes(tensor.data)
     return dtype, shape, blob
 
 
-def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: DType) -> np.ndarray:
+def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str) -> np.ndarray:
     """ Convert `BLOB` result from RedisAI to `np.ndarray` """
-    dtype = DType.__members__[dtype.lower()].value
     mm = {
         'FLOAT': 'float32',
         'DOUBLE': 'float64'
     }
-    if dtype in mm:
-        dtype = mm[dtype]
-    else:
-        dtype = dtype.lower()
+    dtype = mm.get(dtype, dtype.lower())
     a = np.frombuffer(value, dtype=dtype)
     return a.reshape(shape)
 
