@@ -20,7 +20,7 @@ setup(
     author='RedisLabs',
     author_email='oss@redislabs.com',
     packages=find_packages(),
-    install_requires=['redis', 'hiredis', 'rmtest'],
+    install_requires=['redis', 'hiredis', 'numpy'],
     python_requires='>=3.2',
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -30,6 +30,7 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Database',
         'Topic :: Software Development :: Testing'
     ]
