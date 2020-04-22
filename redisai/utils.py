@@ -1,51 +1,74 @@
-import six
-from .constants import DType
+from typing import Union, ByteString, Sequence
+import numpy as np
 
 
-def to_string(s):
-    if isinstance(s, six.string_types):
-        return s
-    elif isinstance(s, bytes):
-        return s.decode('utf-8')
-    else:
-        return s  # Not a string we care about
+dtype_dict = {
+    'float': 'FLOAT',
+    'double': 'DOUBLE',
+    'float32': 'FLOAT',
+    'float64': 'DOUBLE',
+    'int8': 'INT8',
+    'int16': 'INT16',
+    'int32': 'INT32',
+    'int64': 'INT64',
+    'uint8': 'UINT8',
+    'uint16': 'UINT16',
+    'uint32': 'UINT32',
+    'uint64': 'UINT64'}
 
 
-def str_or_strsequence(v):
-    if not isinstance(v, (list, tuple)):
-        if isinstance(v, six.string_types):
-            return [v]
-        else:
-            raise TypeError('Argument must be a string, list or a tuple')
-    return v
+def numpy2blob(tensor: np.ndarray) -> tuple:
+    """ Convert the numpy input from user to `Tensor` """
+    try:
+        dtype = dtype_dict[str(tensor.dtype)]
+    except KeyError:
+        raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
+    shape = tensor.shape
+    blob = bytes(tensor.data)
+    return dtype, shape, blob
 
 
-def list_to_dict(l):
-    if len(l) % 2 != 0:
-        raise RuntimeError("Can't unpack the list: {}".format(l))
+def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str) -> np.ndarray:
+    """ Convert `BLOB` result from RedisAI to `np.ndarray` """
+    mm = {
+        'FLOAT': 'float32',
+        'DOUBLE': 'float64'
+    }
+    dtype = mm.get(dtype, dtype.lower())
+    a = np.frombuffer(value, dtype=dtype)
+    return a.reshape(shape)
+
+
+def list2dict(lst):
+    if len(lst) % 2 != 0:
+        raise RuntimeError("Can't unpack the list: {}".format(lst))
     out = {}
-    for i in range(0, len(l), 2):
-        val = l[i + 1]
-        if isinstance(val, bytes):
+    for i in range(0, len(lst), 2):
+        key = lst[i].decode().lower()
+        val = lst[i + 1]
+        if key != 'blob' and isinstance(val, bytes):
             val = val.decode()
-        out[l[i].decode().lower()] = val
+        out[key] = val
     return out
 
 
-def convert_to_num(dt: DType, arr) -> None:
+def un_bytize(arr: list, target_type: type) -> list:
     """
     Recurse value, replacing each element of b'' with the appropriate element.
-    Function doesn't return anything but does inplace operation which updates `arr`
+    Function returns the same array after inplace operation which updates `arr`
 
-    :param dt: Type of tensor | array
+    :param target_type: Type of tensor | array
     :param arr: The array with b'' numbers or recursive array of b''
     """
-    for ix in six.moves.range(len(arr)):
+    for ix in range(len(arr)):
         obj = arr[ix]
         if isinstance(obj, list):
-            convert_to_num(dt, obj)
+            un_bytize(obj, target_type)
         else:
-            if dt in (DType.float, DType.double):
-                arr[ix] = float(obj)
-            else:
-                arr[ix] = int(obj)
+            arr[ix] = target_type(obj)
+    return arr
+
+
+def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
+    return (inp,) if not isinstance(inp, (list, tuple)) else inp
+

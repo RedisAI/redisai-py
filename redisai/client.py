@@ -1,23 +1,33 @@
-from redis import StrictRedis
-from typing import Union, Any, AnyStr, ByteString, Sequence
-from .containers import Script, Model, Tensor
+from functools import wraps
+from typing import Union, AnyStr, ByteString, List, Sequence
 import warnings
 
-try:
-    import numpy as np
-except ImportError:
-    np = None
+from redis import StrictRedis
+import numpy as np
 
-from .constants import Backend, Device, DType
-from .utils import str_or_strsequence, to_string, list_to_dict
-from . import convert
+from . import utils
 
+
+def enable_debug(f):
+    @wraps(f)
+    def wrapper(*args):
+        print(*args)
+        return f(*args)
+    return wrapper
+
+
+# TODO: typing to use AnyStr
 
 class Client(StrictRedis):
     """
     RedisAI client that can call Redis with RedisAI specific commands
     """
-    def loadbackend(self, identifier: AnyStr, path: AnyStr) -> AnyStr:
+    def __init__(self, debug=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if debug:
+            self.execute_command = enable_debug(super().execute_command)
+
+    def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
         """
         RedisAI by default won't load any backends. User can either explicitly
         load the backend by using this function or let RedisAI load the required
@@ -27,20 +37,36 @@ class Client(StrictRedis):
         :param path: Path to the shared object of the backend
         :return: byte string represents success or failure
         """
-        return self.execute_command('AI.CONFIG LOADBACKEND', identifier, path)
+        return self.execute_command('AI.CONFIG LOADBACKEND', identifier, path).decode()
 
     def modelset(self,
                  name: AnyStr,
-                 backend: Backend,
-                 device: Device,
+                 backend: str,
+                 device: str,
                  data: ByteString,
                  batch: int = None,
                  minbatch: int = None,
                  tag: str = None,
-                 inputs: Union[AnyStr, Sequence[AnyStr]] = None,
-                 outputs: Union[AnyStr, Sequence[AnyStr]] = None
-                 ) -> AnyStr:
-        args = ['AI.MODELSET', name, backend.value, device.value]
+                 inputs: List[AnyStr] = None,
+                 outputs: List[AnyStr] = None) -> str:
+        """
+        Set the model on provided key.
+        :param name: str, Key name
+        :param backend: str, Backend name. Allowed backends are TF, TORCH, TFLITE, ONNX
+        :param device: str, Device name. Allowed devices are CPU and GPU
+        :param data: bytes, Model graph read as bytestring
+        :param batch: int, Number of batches for doing autobatching
+        :param minbatch: int, Minimum number of samples required in a batch for model
+            execution
+        :param tag: str, Any string that will be saved in RedisAI as tags for the model
+        :param inputs: list, List of strings that represents the input nodes in the graph.
+            Required only Tensorflow graphs
+        :param outputs: list, List of strings that represents the output nodes in the graph
+            Required only for Tensorflow graphs
+
+        :return:
+        """
+        args = ['AI.MODELSET', name, backend, device]
 
         if batch is not None:
             args += ['BATCHSIZE', batch]
@@ -49,48 +75,47 @@ class Client(StrictRedis):
         if tag is not None:
             args += ['TAG', tag]
 
-        if backend == Backend.tf:
+        if backend.upper() == 'TF':
             if not(all((inputs, outputs))):
                 raise ValueError(
                     'Require keyword arguments input and output for TF models')
-            args += ['INPUTS'] + str_or_strsequence(inputs)
-            args += ['OUTPUTS'] + str_or_strsequence(outputs)
-        args += [data]
-        return self.execute_command(*args)
+            args += ['INPUTS'] + utils.listify(inputs)
+            args += ['OUTPUTS'] + utils.listify(outputs)
+        args.append(data)
+        return self.execute_command(*args).decode()
 
-    def modelget(self, name: AnyStr, meta_only=False) -> Model:
-        argname = 'META' if meta_only else 'BLOB'
-        rv = self.execute_command('AI.MODELGET', name, argname)
-        rv = list_to_dict(rv)
-        return Model(
-            rv.get('blob'),
-            Device(rv['device']),
-            Backend(rv['backend']),
-            rv['tag'])
+    def modelget(self, name: AnyStr, meta_only=False) -> dict:
+        args = ['AI.MODELGET', name, 'META']
+        if not meta_only:
+            args.append('BLOB')
+        rv = self.execute_command(*args)
+        return utils.list2dict(rv)
 
-    def modeldel(self, name: AnyStr) -> AnyStr:
-        return self.execute_command('AI.MODELDEL', name)
+    def modeldel(self, name: AnyStr) -> str:
+        return self.execute_command('AI.MODELDEL', name).decode()
 
     def modelrun(self,
                  name: AnyStr,
-                 inputs: Union[AnyStr, Sequence[AnyStr]],
-                 outputs: Union[AnyStr, Sequence[AnyStr]]
-                 ) -> AnyStr:
-        args = ['AI.MODELRUN', name]
-        args += ['INPUTS'] + str_or_strsequence(inputs)
-        args += ['OUTPUTS'] + str_or_strsequence(outputs)
-        return self.execute_command(*args)
+                 inputs: List[AnyStr],
+                 outputs: List[AnyStr]
+                 ) -> str:
+        out = self.execute_command(
+            'AI.MODELRUN', name,
+            'INPUTS', *utils.listify(inputs),
+            'OUTPUTS', *utils.listify(outputs)
+        )
+        return out.decode()
 
-    def modelist(self):
+    def modelscan(self) -> list:
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
-        return self.execute_command("AI._MODELLIST")
+        return utils.un_bytize(self.execute_command("AI._MODELSCAN"), lambda x: x.decode())
 
     def tensorset(self,
                   key: AnyStr,
                   tensor: Union[np.ndarray, list, tuple],
                   shape: Sequence[int] = None,
-                  dtype: Union[DType, type] = None) -> Any:
+                  dtype: str = None) -> str:
         """
         Set the values of the tensor on the server using the provided Tensor object
         :param key: The name of the tensor
@@ -99,20 +124,20 @@ class Client(StrictRedis):
         :param dtype: data type of the tensor. Required if `tensor` is list or tuple
         """
         if np and isinstance(tensor, np.ndarray):
-            tensor = convert.from_numpy(tensor)
-            args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, tensor.value]
+            dtype, shape, blob = utils.numpy2blob(tensor)
+            args = ['AI.TENSORSET', key, dtype, *shape, 'BLOB', blob]
         elif isinstance(tensor, (list, tuple)):
             if shape is None:
                 shape = (len(tensor),)
-            if not isinstance(dtype, DType):
-                dtype = DType.__members__[np.dtype(dtype).name]
-            tensor = convert.from_sequence(tensor, shape, dtype)
-            args = ['AI.TENSORSET', key, tensor.dtype.value, *tensor.shape, tensor.argname, *tensor.value]
-        return self.execute_command(*args)
+            args = ['AI.TENSORSET', key, dtype, *shape, 'VALUES', *tensor]
+        else:
+            raise TypeError(f"``tensor`` argument must be a numpy array or a list or a "
+                            f"tuple, but got {type(tensor)}")
+        return self.execute_command(*args).decode()
 
     def tensorget(self,
-                  key: AnyStr, as_numpy: bool = True,
-                  meta_only: bool = False) -> Union[Tensor, np.ndarray]:
+                  key: str, as_numpy: bool = True,
+                  meta_only: bool = False) -> Union[dict, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy array
         but it can be controlled using `as_type` argument and `meta_only` argument.
@@ -124,36 +149,41 @@ class Client(StrictRedis):
             only the shape and the type
         :return: an instance of as_type
         """
+        args = ['AI.TENSORGET', key, 'META']
+        if not meta_only:
+            if as_numpy is True:
+                args.append('BLOB')
+            else:
+                args.append('VALUES')
+
+        res = self.execute_command(*args)
+        res = utils.list2dict(res)
         if meta_only:
-            argname = 'META'
+            return res
         elif as_numpy is True:
-            argname = 'BLOB'
+            return utils.blob2numpy(res['blob'], res['shape'], res['dtype'])
         else:
-            argname = 'VALUES'
+            target = float if res['dtype'] in ('FLOAT', 'DOUBLE') else int
+            utils.un_bytize(res['values'], target)
+            return res
 
-        res = self.execute_command('AI.TENSORGET', key, argname)
-        dtype, shape = to_string(res[0]), res[1]
-        if meta_only:
-            return convert.to_sequence([], shape, dtype)
-        if as_numpy is True:
-            return convert.to_numpy(res[2], shape, dtype)
-        else:
-            return convert.to_sequence(res[2], shape, dtype)
-
-    def scriptset(self, name: AnyStr, device: Device, script: AnyStr, tag: str = None) -> AnyStr:
-        args = ['AI.SCRIPTSET', name, device.value]
+    def scriptset(self, name: str, device: str, script: str, tag: str = None) -> str:
+        args = ['AI.SCRIPTSET', name, device]
         if tag:
             args += ['TAG', tag]
-        args += [script]
-        return self.execute_command(*args)
+        args.append(script)
+        return self.execute_command(*args).decode()
 
-    def scriptget(self, name: AnyStr) -> Script:
-        ret = self.execute_command('AI.SCRIPTGET', name)
-        ret = list_to_dict(ret)
-        return Script(ret['source'], Device(ret['device']), ret['tag'])
+    def scriptget(self, name: AnyStr, meta_only=False) -> dict:
+        # TODO scripget test
+        args = ['AI.SCRIPTGET', name, 'META']
+        if not meta_only:
+            args.append('SOURCE')
+        ret = self.execute_command(*args)
+        return utils.list2dict(ret)
 
-    def scriptdel(self, name):
-        return self.execute_command('AI.SCRIPTDEL', name)
+    def scriptdel(self, name: str) -> str:
+        return self.execute_command('AI.SCRIPTDEL', name).decode()
 
     def scriptrun(self,
                   name: AnyStr,
@@ -161,20 +191,21 @@ class Client(StrictRedis):
                   inputs: Union[AnyStr, Sequence[AnyStr]],
                   outputs: Union[AnyStr, Sequence[AnyStr]]
                   ) -> AnyStr:
-        args = ['AI.SCRIPTRUN', name, function, 'INPUTS']
-        args += str_or_strsequence(inputs)
-        args += ['OUTPUTS']
-        args += str_or_strsequence(outputs)
-        return self.execute_command(*args)
+        out = self.execute_command(
+            'AI.SCRIPTRUN', name, function,
+            'INPUTS', *utils.listify(inputs),
+            'OUTPUTS', *utils.listify(outputs)
+        )
+        return out.decode()
 
-    def scriptlist(self):
+    def scriptscan(self) -> list:
         warnings.warn("Experimental: Script List API is experimental and might change "
                       "in the future without any notice", UserWarning)
-        return self.execute_command("AI._SCRIPTLIST")
+        return utils.un_bytize(self.execute_command("AI._SCRIPTSCAN"), lambda x: x.decode())
 
     def infoget(self, key: str) -> dict:
         ret = self.execute_command('AI.INFO', key)
-        return list_to_dict(ret)
+        return utils.list2dict(ret)
 
-    def inforeset(self, key: str) -> dict:
-        return self.execute_command('AI.INFO', key, 'RESETSTAT')
+    def inforeset(self, key: str) -> str:
+        return self.execute_command('AI.INFO', key, 'RESETSTAT').decode()
