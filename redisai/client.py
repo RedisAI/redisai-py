@@ -106,7 +106,7 @@ class Client(StrictRedis):
         )
         return out.decode()
 
-    def modescan(self) -> list:
+    def modelscan(self) -> list:
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
         return utils.un_bytize(self.execute_command("AI._MODELSCAN"), lambda x: x.decode())

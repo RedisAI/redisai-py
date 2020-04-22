@@ -245,7 +245,7 @@ class ClientTestCase(TestCase):
         ptmodel = load_model(model_path)
         con = self.get_client()
         con.modelset("pt_model", 'torch', 'cpu', ptmodel)
-        mlist = con.modescan()
+        mlist = con.modelscan()
         self.assertEqual(mlist, [['pt_model', ''], ['m', 'v1.2']])
 
     def test_script_list(self):
