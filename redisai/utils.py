@@ -44,14 +44,15 @@ def list2dict(lst):
         raise RuntimeError("Can't unpack the list: {}".format(lst))
     out = {}
     for i in range(0, len(lst), 2):
+        key = lst[i].decode().lower()
         val = lst[i + 1]
-        if isinstance(val, bytes):
+        if key != 'blob' and isinstance(val, bytes):
             val = val.decode()
-        out[lst[i].decode().lower()] = val
+        out[key] = val
     return out
 
 
-def un_bytize(arr: Sequence, target_type: type) -> Sequence:
+def un_bytize(arr: list, target_type: type) -> list:
     """
     Recurse value, replacing each element of b'' with the appropriate element.
     Function returns the same array after inplace operation which updates `arr`
@@ -66,3 +67,8 @@ def un_bytize(arr: Sequence, target_type: type) -> Sequence:
         else:
             arr[ix] = target_type(obj)
     return arr
+
+
+def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
+    return (inp,) if not isinstance(inp, (list, tuple)) else inp
+

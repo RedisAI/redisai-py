@@ -1,4 +1,3 @@
-# TODO: Test with some errors and exceptions
 from io import StringIO
 import sys
 from unittest import TestCase
@@ -7,6 +6,9 @@ import os.path
 from redisai import Client
 from ml2rt import load_model
 from redis.exceptions import ResponseError
+
+
+DEBUG = False
 
 
 class Capturing(list):
@@ -33,7 +35,7 @@ class ClientTestCase(TestCase):
         super(ClientTestCase, self).setUp()
         self.get_client().flushall()
 
-    def get_client(self, debug=False):
+    def get_client(self, debug=DEBUG):
         return Client(debug)
 
     def test_set_non_numpy_tensor(self):
@@ -84,6 +86,30 @@ class ClientTestCase(TestCase):
         stringarr = np.array('dummy')
         with self.assertRaises(TypeError):
             con.tensorset('trying', stringarr)
+
+    def test_modelrun_non_list_input_output(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        con.modelset('m', 'tf', 'cpu', model_pb,
+                     inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        con.tensorset('a', (2, 3), dtype='float')
+        con.tensorset('b', (2, 3), dtype='float')
+        ret = con.modelrun('m', ['a', 'b'], 'out')
+        self.assertEqual(ret, 'OK')
+
+    def test_nonasciichar(self):
+        nonascii = 'ĉ'
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        con.modelset('m' + nonascii, 'tf', 'cpu', model_pb,
+                     inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        con.tensorset('a' + nonascii, (2, 3), dtype='float')
+        con.tensorset('b', (2, 3), dtype='float')
+        con.modelrun('m' + nonascii, ['a' + nonascii, 'b'], ['c' + nonascii])
+        tensor = con.tensorget('c' + nonascii)
+        self.assertTrue((np.allclose(tensor, [4., 9.])))
 
     def test_run_tf_model(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
@@ -219,14 +245,14 @@ class ClientTestCase(TestCase):
         ptmodel = load_model(model_path)
         con = self.get_client()
         con.modelset("pt_model", 'torch', 'cpu', ptmodel)
-        mlist = con.modelist()
+        mlist = con.modescan()
         self.assertEqual(mlist, [['pt_model', ''], ['m', 'v1.2']])
 
     def test_script_list(self):
         con = self.get_client()
         con.scriptset('ket1', 'cpu', script, tag='v1.0')
         con.scriptset('ket2', 'cpu', script)
-        slist = con.scriptlist()
+        slist = con.scriptscan()
         self.assertEqual(slist, [['ket1', 'v1.0'], ['ket2', '']])
 
     def test_debug(self):

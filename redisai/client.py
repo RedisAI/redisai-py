@@ -16,6 +16,8 @@ def enable_debug(f):
     return wrapper
 
 
+# TODO: typing to use AnyStr
+
 class Client(StrictRedis):
     """
     RedisAI client that can call Redis with RedisAI specific commands
@@ -77,14 +79,16 @@ class Client(StrictRedis):
             if not(all((inputs, outputs))):
                 raise ValueError(
                     'Require keyword arguments input and output for TF models')
-            args += ['INPUTS'] + inputs
-            args += ['OUTPUTS'] + outputs
+            args += ['INPUTS'] + utils.listify(inputs)
+            args += ['OUTPUTS'] + utils.listify(outputs)
         args.append(data)
         return self.execute_command(*args).decode()
 
     def modelget(self, name: AnyStr, meta_only=False) -> dict:
-        argname = 'META' if meta_only else 'BLOB'
-        rv = self.execute_command('AI.MODELGET', name, argname)
+        args = ['AI.MODELGET', name, 'META']
+        if not meta_only:
+            args.append('BLOB')
+        rv = self.execute_command(*args)
         return utils.list2dict(rv)
 
     def modeldel(self, name: AnyStr) -> str:
@@ -95,16 +99,17 @@ class Client(StrictRedis):
                  inputs: List[AnyStr],
                  outputs: List[AnyStr]
                  ) -> str:
-        args = ['AI.MODELRUN', name, 'INPUTS'] + inputs
-        args.append('OUTPUTS')
-        args += outputs
-        return self.execute_command(*args).decode()
+        out = self.execute_command(
+            'AI.MODELRUN', name,
+            'INPUTS', *utils.listify(inputs),
+            'OUTPUTS', *utils.listify(outputs)
+        )
+        return out.decode()
 
-    def modelist(self):
-        # TODO: typing and consistent return
+    def modescan(self) -> list:
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
-        return utils.un_bytize(self.execute_command("AI._MODELLIST"), lambda x: x.decode())
+        return utils.un_bytize(self.execute_command("AI._MODELSCAN"), lambda x: x.decode())
 
     def tensorset(self,
                   key: AnyStr,
@@ -144,23 +149,23 @@ class Client(StrictRedis):
             only the shape and the type
         :return: an instance of as_type
         """
-        if meta_only:
-            argname = 'META'
-        elif as_numpy is True:
-            argname = 'BLOB'
-        else:
-            argname = 'VALUES'
+        args = ['AI.TENSORGET', key, 'META']
+        if not meta_only:
+            if as_numpy is True:
+                args.append('BLOB')
+            else:
+                args.append('VALUES')
 
-        res = self.execute_command('AI.TENSORGET', key, argname)
-        dtype, shape = res[0].decode(), res[1]
+        res = self.execute_command(*args)
+        res = utils.list2dict(res)
         if meta_only:
-            return {'shape': shape, 'dtype': dtype}
+            return res
         elif as_numpy is True:
-            return utils.blob2numpy(res[2], shape, dtype)
+            return utils.blob2numpy(res['blob'], res['shape'], res['dtype'])
         else:
-            target = float if dtype in ('FLOAT', 'DOUBLE') else int
-            values = utils.un_bytize(res[2], target)
-            return {'values': values, 'shape': shape, 'dtype': dtype}
+            target = float if res['dtype'] in ('FLOAT', 'DOUBLE') else int
+            utils.un_bytize(res['values'], target)
+            return res
 
     def scriptset(self, name: str, device: str, script: str, tag: str = None) -> str:
         args = ['AI.SCRIPTSET', name, device]
@@ -169,8 +174,12 @@ class Client(StrictRedis):
         args.append(script)
         return self.execute_command(*args).decode()
 
-    def scriptget(self, name: AnyStr) -> dict:
-        ret = self.execute_command('AI.SCRIPTGET', name)
+    def scriptget(self, name: AnyStr, meta_only=False) -> dict:
+        # TODO scripget test
+        args = ['AI.SCRIPTGET', name, 'META']
+        if not meta_only:
+            args.append('SOURCE')
+        ret = self.execute_command(*args)
         return utils.list2dict(ret)
 
     def scriptdel(self, name: str) -> str:
@@ -179,19 +188,20 @@ class Client(StrictRedis):
     def scriptrun(self,
                   name: AnyStr,
                   function: AnyStr,
-                  inputs: Sequence[AnyStr],
-                  outputs: Sequence[AnyStr]
+                  inputs: Union[AnyStr, Sequence[AnyStr]],
+                  outputs: Union[AnyStr, Sequence[AnyStr]]
                   ) -> AnyStr:
-        args = ['AI.SCRIPTRUN', name, function, 'INPUTS'] + inputs
-        args.append('OUTPUTS')
-        args += outputs
-        return self.execute_command(*args).decode()
+        out = self.execute_command(
+            'AI.SCRIPTRUN', name, function,
+            'INPUTS', *utils.listify(inputs),
+            'OUTPUTS', *utils.listify(outputs)
+        )
+        return out.decode()
 
-    def scriptlist(self):
-        # TODO: Typing and consisent return
+    def scriptscan(self) -> list:
         warnings.warn("Experimental: Script List API is experimental and might change "
                       "in the future without any notice", UserWarning)
-        return utils.un_bytize(self.execute_command("AI._SCRIPTLIST"), lambda x: x.decode())
+        return utils.un_bytize(self.execute_command("AI._SCRIPTSCAN"), lambda x: x.decode())
 
     def infoget(self, key: str) -> dict:
         ret = self.execute_command('AI.INFO', key)
