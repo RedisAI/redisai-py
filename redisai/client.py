@@ -53,7 +53,9 @@ class Dag:
         args = builder.tensorget(key, as_numpy, meta_only)
         self.commands.extend(args)
         self.commands.append("|>")
-        self.result_processors.append(partial(utils.tensorget_processor, meta_only, as_numpy))
+        self.result_processors.append(partial(utils.tensorget_postprocessor,
+                                              as_numpy,
+                                              meta_only))
         return self
 
     def modelrun(self,
@@ -151,7 +153,7 @@ class Client(StrictRedis):
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
         args = builder.modelscan()
-        return utils.un_bytize(self.execute_command(*args), lambda x: x.decode())
+        return utils.recursive_bytetransform(self.execute_command(*args), lambda x: x.decode())
 
     def tensorset(self,
                   key: AnyStr,
@@ -184,7 +186,7 @@ class Client(StrictRedis):
         """
         args = builder.tensorget(key, as_numpy, meta_only)
         res = self.execute_command(*args)
-        return utils.tensorget_processor(meta_only, as_numpy, res)
+        return utils.tensorget_postprocessor(as_numpy, meta_only, res)
 
     def scriptset(self, name: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
         args = builder.scriptset(name, device, script, tag)
@@ -214,7 +216,7 @@ class Client(StrictRedis):
         warnings.warn("Experimental: Script List API is experimental and might change "
                       "in the future without any notice", UserWarning)
         args = builder.scriptscan()
-        return utils.un_bytize(self.execute_command(*args), lambda x: x.decode())
+        return utils.recursive_bytetransform(self.execute_command(*args), lambda x: x.decode())
 
     def infoget(self, key: AnyStr) -> dict:
         args = builder.infoget(key)

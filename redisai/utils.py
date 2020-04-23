@@ -52,7 +52,7 @@ def list2dict(lst):
     return out
 
 
-def un_bytize(arr: List[AnyStr], target: Callable) -> list:
+def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
     """
     Recurse value, replacing each element of b'' with the appropriate element.
     Function returns the same array after inplace operation which updates `arr`
@@ -63,7 +63,7 @@ def un_bytize(arr: List[AnyStr], target: Callable) -> list:
     for ix in range(len(arr)):
         obj = arr[ix]
         if isinstance(obj, list):
-            un_bytize(obj, target)
+            recursive_bytetransform(obj, target)
         else:
             arr[ix] = target(obj)
     return arr
@@ -73,7 +73,7 @@ def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
     return (inp,) if not isinstance(inp, (list, tuple)) else inp
 
 
-def tensorget_processor(meta_only, as_numpy, rai_result):
+def tensorget_postprocessor(as_numpy, meta_only, rai_result):
     rai_result = list2dict(rai_result)
     if meta_only:
         return rai_result
@@ -81,5 +81,5 @@ def tensorget_processor(meta_only, as_numpy, rai_result):
         return blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'])
     else:
         target = float if rai_result['dtype'] in ('FLOAT', 'DOUBLE') else int
-        un_bytize(rai_result['values'], target)
+        recursive_bytetransform(rai_result['values'], target)
         return rai_result
