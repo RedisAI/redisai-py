@@ -1,11 +1,15 @@
-from functools import wraps
-from typing import Union, AnyStr, ByteString, List, Sequence
+from functools import wraps, partial
+from typing import Union, AnyStr, ByteString, List, Sequence, Any
 import warnings
 
 from redis import StrictRedis
 import numpy as np
 
 from . import utils
+from .command_builder import Builder
+
+
+builder = Builder()
 
 
 def enable_debug(f):
@@ -16,7 +20,59 @@ def enable_debug(f):
     return wrapper
 
 
-# TODO: typing to use AnyStr
+class Dag:
+    def __init__(self, load, persist, executor):
+        self.result_processors = []
+        self.commands = ['AI.DAGRUN']
+        if load:
+            if not isinstance(load, (list, tuple)):
+                self.commands += ["LOAD", 1, load]
+            else:
+                self.commands += ["LOAD", len(load), *load]
+        if persist:
+            if not isinstance(persist, (list, tuple)):
+                self.commands += ["PERSIST", 1, persist, '|>']
+            else:
+                self.commands += ["PERSIST", len(persist), *persist, '|>']
+        self.executor = executor
+
+    def tensorset(self,
+                  key: AnyStr,
+                  tensor: Union[np.ndarray, list, tuple],
+                  shape: Sequence[int] = None,
+                  dtype: str = None) -> Any:
+        args = builder.tensorset(key, tensor, shape, dtype)
+        self.commands.extend(args)
+        self.commands.append("|>")
+        self.result_processors.append(bytes.decode)
+        return self
+
+    def tensorget(self,
+                  key: AnyStr, as_numpy: bool = True,
+                  meta_only: bool = False) -> Any:
+        args = builder.tensorget(key, as_numpy, meta_only)
+        self.commands.extend(args)
+        self.commands.append("|>")
+        self.result_processors.append(partial(utils.tensorget_processor, meta_only, as_numpy))
+        return self
+
+    def modelrun(self,
+                 name: AnyStr,
+                 inputs: List[AnyStr],
+                 outputs: List[AnyStr]) -> Any:
+        args = builder.modelrun(name, inputs, outputs)
+        self.commands.extend(args)
+        self.commands.append("|>")
+        self.result_processors.append(bytes.decode)
+        return self
+
+    def run(self):
+        results = self.executor(*self.commands)
+        out = []
+        for res, fn in zip(results, self.result_processors):
+            out.append(fn(res))
+        return out
+
 
 class Client(StrictRedis):
     """
@@ -26,6 +82,10 @@ class Client(StrictRedis):
         super().__init__(*args, **kwargs)
         if debug:
             self.execute_command = enable_debug(super().execute_command)
+
+    def dag(self, load: Sequence = None, persist: Sequence = None) -> Dag:
+        """ Special function to return a dag object """
+        return Dag(load, persist, self.execute_command)
 
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
         """
@@ -37,7 +97,8 @@ class Client(StrictRedis):
         :param path: Path to the shared object of the backend
         :return: byte string represents success or failure
         """
-        return self.execute_command('AI.CONFIG LOADBACKEND', identifier, path).decode()
+        args = builder.loadbackend(identifier, path)
+        return self.execute_command(*args).decode()
 
     def modelset(self,
                  name: AnyStr,
@@ -46,7 +107,7 @@ class Client(StrictRedis):
                  data: ByteString,
                  batch: int = None,
                  minbatch: int = None,
-                 tag: str = None,
+                 tag: AnyStr = None,
                  inputs: List[AnyStr] = None,
                  outputs: List[AnyStr] = None) -> str:
         """
@@ -66,50 +127,31 @@ class Client(StrictRedis):
 
         :return:
         """
-        args = ['AI.MODELSET', name, backend, device]
-
-        if batch is not None:
-            args += ['BATCHSIZE', batch]
-        if minbatch is not None:
-            args += ['MINBATCHSIZE', minbatch]
-        if tag is not None:
-            args += ['TAG', tag]
-
-        if backend.upper() == 'TF':
-            if not(all((inputs, outputs))):
-                raise ValueError(
-                    'Require keyword arguments input and output for TF models')
-            args += ['INPUTS'] + utils.listify(inputs)
-            args += ['OUTPUTS'] + utils.listify(outputs)
-        args.append(data)
+        args = builder.modelset(name, backend, device, data,
+                                batch, minbatch, tag, inputs, outputs)
         return self.execute_command(*args).decode()
 
     def modelget(self, name: AnyStr, meta_only=False) -> dict:
-        args = ['AI.MODELGET', name, 'META']
-        if not meta_only:
-            args.append('BLOB')
+        args = builder.modelget(name, meta_only)
         rv = self.execute_command(*args)
         return utils.list2dict(rv)
 
     def modeldel(self, name: AnyStr) -> str:
-        return self.execute_command('AI.MODELDEL', name).decode()
+        args = builder.modeldel(name)
+        return self.execute_command(*args).decode()
 
     def modelrun(self,
                  name: AnyStr,
                  inputs: List[AnyStr],
-                 outputs: List[AnyStr]
-                 ) -> str:
-        out = self.execute_command(
-            'AI.MODELRUN', name,
-            'INPUTS', *utils.listify(inputs),
-            'OUTPUTS', *utils.listify(outputs)
-        )
-        return out.decode()
+                 outputs: List[AnyStr]) -> str:
+        args = builder.modelrun(name, inputs, outputs)
+        return self.execute_command(*args).decode()
 
     def modelscan(self) -> list:
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
-        return utils.un_bytize(self.execute_command("AI._MODELSCAN"), lambda x: x.decode())
+        args = builder.modelscan()
+        return utils.un_bytize(self.execute_command(*args), lambda x: x.decode())
 
     def tensorset(self,
                   key: AnyStr,
@@ -123,20 +165,11 @@ class Client(StrictRedis):
         :param shape: Shape of the tensor. Required if `tensor` is list or tuple
         :param dtype: data type of the tensor. Required if `tensor` is list or tuple
         """
-        if np and isinstance(tensor, np.ndarray):
-            dtype, shape, blob = utils.numpy2blob(tensor)
-            args = ['AI.TENSORSET', key, dtype, *shape, 'BLOB', blob]
-        elif isinstance(tensor, (list, tuple)):
-            if shape is None:
-                shape = (len(tensor),)
-            args = ['AI.TENSORSET', key, dtype, *shape, 'VALUES', *tensor]
-        else:
-            raise TypeError(f"``tensor`` argument must be a numpy array or a list or a "
-                            f"tuple, but got {type(tensor)}")
+        args = builder.tensorset(key, tensor, shape, dtype)
         return self.execute_command(*args).decode()
 
     def tensorget(self,
-                  key: str, as_numpy: bool = True,
+                  key: AnyStr, as_numpy: bool = True,
                   meta_only: bool = False) -> Union[dict, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy array
@@ -149,63 +182,45 @@ class Client(StrictRedis):
             only the shape and the type
         :return: an instance of as_type
         """
-        args = ['AI.TENSORGET', key, 'META']
-        if not meta_only:
-            if as_numpy is True:
-                args.append('BLOB')
-            else:
-                args.append('VALUES')
-
+        args = builder.tensorget(key, as_numpy, meta_only)
         res = self.execute_command(*args)
-        res = utils.list2dict(res)
-        if meta_only:
-            return res
-        elif as_numpy is True:
-            return utils.blob2numpy(res['blob'], res['shape'], res['dtype'])
-        else:
-            target = float if res['dtype'] in ('FLOAT', 'DOUBLE') else int
-            utils.un_bytize(res['values'], target)
-            return res
+        return utils.tensorget_processor(meta_only, as_numpy, res)
 
-    def scriptset(self, name: str, device: str, script: str, tag: str = None) -> str:
-        args = ['AI.SCRIPTSET', name, device]
-        if tag:
-            args += ['TAG', tag]
-        args.append(script)
+    def scriptset(self, name: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
+        args = builder.scriptset(name, device, script, tag)
         return self.execute_command(*args).decode()
 
     def scriptget(self, name: AnyStr, meta_only=False) -> dict:
         # TODO scripget test
-        args = ['AI.SCRIPTGET', name, 'META']
-        if not meta_only:
-            args.append('SOURCE')
+        args = builder.scriptget(name, meta_only)
         ret = self.execute_command(*args)
         return utils.list2dict(ret)
 
-    def scriptdel(self, name: str) -> str:
-        return self.execute_command('AI.SCRIPTDEL', name).decode()
+    def scriptdel(self, name: AnyStr) -> str:
+        args = builder.scriptdel(name)
+        return self.execute_command(*args).decode()
 
     def scriptrun(self,
                   name: AnyStr,
                   function: AnyStr,
                   inputs: Union[AnyStr, Sequence[AnyStr]],
                   outputs: Union[AnyStr, Sequence[AnyStr]]
-                  ) -> AnyStr:
-        out = self.execute_command(
-            'AI.SCRIPTRUN', name, function,
-            'INPUTS', *utils.listify(inputs),
-            'OUTPUTS', *utils.listify(outputs)
-        )
+                  ) -> str:
+        args = builder.scriptrun(name, function, inputs, outputs)
+        out = self.execute_command(*args)
         return out.decode()
 
     def scriptscan(self) -> list:
         warnings.warn("Experimental: Script List API is experimental and might change "
                       "in the future without any notice", UserWarning)
-        return utils.un_bytize(self.execute_command("AI._SCRIPTSCAN"), lambda x: x.decode())
+        args = builder.scriptscan()
+        return utils.un_bytize(self.execute_command(*args), lambda x: x.decode())
 
-    def infoget(self, key: str) -> dict:
-        ret = self.execute_command('AI.INFO', key)
+    def infoget(self, key: AnyStr) -> dict:
+        args = builder.infoget(key)
+        ret = self.execute_command(*args)
         return utils.list2dict(ret)
 
-    def inforeset(self, key: str) -> str:
-        return self.execute_command('AI.INFO', key, 'RESETSTAT').decode()
+    def inforeset(self, key: AnyStr) -> str:
+        args = builder.inforeset(key)
+        return self.execute_command(*args).decode()
