@@ -235,7 +235,7 @@ class ClientTestCase(TestCase):
         third_info = con.infoget('m')
         self.assertEqual(first_info, third_info)  # before modelrun and after reset
 
-    def test_model_list(self):
+    def test_model_scan(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
@@ -248,7 +248,7 @@ class ClientTestCase(TestCase):
         mlist = con.modelscan()
         self.assertEqual(mlist, [['pt_model', ''], ['m', 'v1.2']])
 
-    def test_script_list(self):
+    def test_script_scan(self):
         con = self.get_client()
         con.scriptset('ket1', 'cpu', script, tag='v1.0')
         con.scriptset('ket2', 'cpu', script)
@@ -260,3 +260,20 @@ class ClientTestCase(TestCase):
         with Capturing() as output:
             con.tensorset('x', (2, 3, 4, 5), dtype='float')
         self.assertEqual(['AI.TENSORSET x float 4 VALUES 2 3 4 5'], output)
+
+    def test_z_dag(self):  # z in the name is to make it run in the end
+        model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
+        ptmodel = load_model(model_path)
+        con = self.get_client()
+        con.modelset("pt_model", 'torch', 'cpu', ptmodel, tag='v1.0')
+        dag = con.dag()
+        dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget('output')
+        expected = ['OK', 'OK', 'OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
+        result = dag.run()
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+
+
