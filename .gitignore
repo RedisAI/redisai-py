@@ -7,3 +7,4 @@ redisai.egg-info
 .mypy_cache/
 build/
 dist/
+docs/_build/
