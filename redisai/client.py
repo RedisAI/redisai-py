@@ -21,9 +21,15 @@ def enable_debug(f):
 
 
 class Dag:
-    def __init__(self, load, persist, executor):
+    def __init__(self, load, persist, executor, readonly=False):
         self.result_processors = []
-        self.commands = ['AI.DAGRUN']
+        if readonly:
+            if persist:
+                raise RuntimeError("READONLY requests cannot write (duh!) and should not "
+                                   "have PERSISTing values")
+            self.commands = ['AI.DAGRUNRO']
+        else:
+            self.commands = ['AI.DAGRUN']
         if load:
             if not isinstance(load, (list, tuple)):
                 self.commands += ["LOAD", 1, load]
@@ -85,9 +91,10 @@ class Client(StrictRedis):
         if debug:
             self.execute_command = enable_debug(super().execute_command)
 
-    def dag(self, load: Sequence = None, persist: Sequence = None) -> Dag:
+    def dag(self, load: Sequence = None, persist: Sequence = None,
+            readonly: bool = False) -> Dag:
         """ Special function to return a dag object """
-        return Dag(load, persist, self.execute_command)
+        return Dag(load, persist, self.execute_command, readonly)
 
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
         """

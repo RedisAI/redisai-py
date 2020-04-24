@@ -261,7 +261,7 @@ class ClientTestCase(TestCase):
             con.tensorset('x', (2, 3, 4, 5), dtype='float')
         self.assertEqual(['AI.TENSORSET x float 4 VALUES 2 3 4 5'], output)
 
-    def test_z_dag(self):  # z in the name is to make it run in the end
+    def test_z_dag(self):  # TODO: z in the name is to make it run in the end
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
         con = self.get_client()
