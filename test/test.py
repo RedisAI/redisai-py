@@ -29,14 +29,16 @@ def bar(a, b):
     return a + b
 """
 
-
-class ClientTestCase(TestCase):
+class RedisAITestBase(TestCase):
     def setUp(self):
-        super(ClientTestCase, self).setUp()
+        super().setUp()
         self.get_client().flushall()
 
     def get_client(self, debug=DEBUG):
         return Client(debug)
+
+
+class ClientTestCase(RedisAITestBase):
 
     def test_set_non_numpy_tensor(self):
         con = self.get_client()
@@ -45,12 +47,18 @@ class ClientTestCase(TestCase):
         self.assertEqual([2, 3, 4, 5], result['values'])
         self.assertEqual([4], result['shape'])
 
+        con.tensorset('x', (2, 3, 4, 5), dtype='float64')
+        result = con.tensorget('x', as_numpy=False)
+        self.assertEqual([2, 3, 4, 5], result['values'])
+        self.assertEqual([4], result['shape'])
+        self.assertEqual('DOUBLE', result['dtype'])
+
         con.tensorset('x', (2, 3, 4, 5), dtype='int16', shape=(2, 2))
         result = con.tensorget('x', as_numpy=False)
         self.assertEqual([2, 3, 4, 5], result['values'])
         self.assertEqual([2, 2], result['shape'])
 
-        with self.assertRaises(ResponseError):
+        with self.assertRaises(TypeError):
             con.tensorset('x', (2, 3, 4, 5), dtype='wrongtype', shape=(2, 2))
         con.tensorset('x', (2, 3, 4, 5), dtype='int8', shape=(2, 2))
         result = con.tensorget('x', as_numpy=False)
@@ -63,7 +71,7 @@ class ClientTestCase(TestCase):
             con.tensorset('x')
             con.tensorset(1)
 
-    def test_meta(self):
+    def test_tensorget_meta(self):
         con = self.get_client()
         con.tensorset('x', (2, 3, 4, 5), dtype='float')
         result = con.tensorget('x', meta_only=True)
@@ -73,9 +81,20 @@ class ClientTestCase(TestCase):
     def test_numpy_tensor(self):
         con = self.get_client()
 
+        input_array = np.array([2, 3], dtype=np.float32)
+        con.tensorset('x', input_array)
+        values = con.tensorget('x')
+        self.assertEqual(values.dtype, np.float32)
+
+        input_array = np.array([2, 3], dtype=np.float64)
+        con.tensorset('x', input_array)
+        values = con.tensorget('x')
+        self.assertEqual(values.dtype, np.float64)
+
         input_array = np.array([2, 3])
         con.tensorset('x', input_array)
         values = con.tensorget('x')
+
         self.assertTrue(np.allclose([2, 3], values))
         self.assertEqual(values.dtype, np.int64)
         self.assertEqual(values.shape, (2,))
@@ -86,6 +105,15 @@ class ClientTestCase(TestCase):
         stringarr = np.array('dummy')
         with self.assertRaises(TypeError):
             con.tensorset('trying', stringarr)
+
+    def test_modelget_meta(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        con.modelset('m', 'tf', 'cpu', model_pb,
+                     inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        model = con.modelget('m', meta_only=True)
+        self.assertEqual(model, {'backend': 'TF', 'device': 'cpu', 'tag': 'v1.0'})
 
     def test_modelrun_non_list_input_output(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
@@ -121,6 +149,10 @@ class ClientTestCase(TestCase):
         con = self.get_client()
         con.modelset('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        con.modeldel('m')
+        self.assertRaises(ResponseError, con.modelget, 'm')
+        con.modelset('m', 'tf', 'cpu', model_pb,
+                     inputs=['a', 'b'], outputs='mul', tag='v1.0')
 
         # wrong model
         self.assertRaises(ResponseError,
@@ -166,6 +198,9 @@ class ClientTestCase(TestCase):
         script_det = con.scriptget('ket')
         self.assertTrue(script_det['device'] == 'cpu')
         self.assertTrue(script_det['source'] == script)
+        script_det = con.scriptget('ket', meta_only=True)
+        self.assertTrue(script_det['device'] == 'cpu')
+        self.assertNotIn('source', script_det)
         con.scriptdel('ket')
         self.assertRaises(ResponseError, con.scriptget, 'ket')
 
@@ -235,7 +270,7 @@ class ClientTestCase(TestCase):
         third_info = con.infoget('m')
         self.assertEqual(first_info, third_info)  # before modelrun and after reset
 
-    def test_model_list(self):
+    def test_model_scan(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
@@ -245,10 +280,10 @@ class ClientTestCase(TestCase):
         ptmodel = load_model(model_path)
         con = self.get_client()
         con.modelset("pt_model", 'torch', 'cpu', ptmodel)
-        mlist = con.modelscan()
+        mlist = con.modelscan() # TODO: modelscan issues in RedisAI
         self.assertEqual(mlist, [['pt_model', ''], ['m', 'v1.2']])
 
-    def test_script_list(self):
+    def test_script_scan(self):
         con = self.get_client()
         con.scriptset('ket1', 'cpu', script, tag='v1.0')
         con.scriptset('ket2', 'cpu', script)
@@ -259,4 +294,103 @@ class ClientTestCase(TestCase):
         con = self.get_client(debug=True)
         with Capturing() as output:
             con.tensorset('x', (2, 3, 4, 5), dtype='float')
-        self.assertEqual(['AI.TENSORSET x float 4 VALUES 2 3 4 5'], output)
+        self.assertEqual(['AI.TENSORSET x FLOAT 4 VALUES 2 3 4 5'], output)
+
+
+class DagTestCase(RedisAITestBase):
+    def setUp(self):
+        super().setUp()
+        con = self.get_client()
+        model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
+        ptmodel = load_model(model_path)
+        con.modelset("pt_model", 'torch', 'cpu', ptmodel, tag='v1.0')
+
+    def test_dagrun_with_load(self):
+        con = self.get_client()
+        con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+
+        dag = con.dag(load='a')
+        dag.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget('output')
+        result = dag.run()
+        expected = ['OK', 'OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+        self.assertRaises(ResponseError, con.tensorget, 'b')
+
+    def test_dagrun_with_persist(self):
+        con = self.get_client()
+
+        dag = con.dag(persist='wrongkey')  # this won't raise Error
+        dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float').run()
+
+        dag = con.dag(persist=['b'])
+        dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.tensorget('b')
+        result = dag.run()
+        b = con.tensorget('b')
+        self.assertTrue(np.allclose(b, result[-1]))
+        self.assertEqual(b.dtype, np.float32)
+        self.assertEqual(len(result), 3)
+
+    def test_dagrun_calling_on_return(self):
+        con = self.get_client()
+        con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        result = con.\
+            dag(load='a').\
+            tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float').\
+            modelrun("pt_model", ["a", "b"], ["output"]).\
+            tensorget('output').\
+            run()
+        expected = ['OK', 'OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_dagrun_without_load_and_persist(self):
+        con = self.get_client()
+
+        dag = con.dag(load='wrongkey')
+        with self.assertRaises(ResponseError):
+            dag.tensorget('wrongkey').run()
+
+        dag = con.dag()
+        dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget('output')
+        result = dag.run()
+        expected = ['OK', 'OK', 'OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_dagrun_with_load_and_persist(self):
+        con = self.get_client()
+        con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        con.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        dag = con.dag(load=['a', 'b'], persist='output')
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget('output')
+        result = dag.run()
+        expected = ['OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
+        result_outside_dag = con.tensorget('output')
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        result = dag.run()
+        self.assertTrue(np.allclose(result_outside_dag, result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_dagrunRO(self):
+        con = self.get_client()
+        con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        con.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
+        with self.assertRaises(RuntimeError):
+            con.dag(load=['a', 'b'], persist='output', readonly=True)
+        dag = con.dag(load=['a', 'b'], readonly=True)
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget('output')
+        result = dag.run()
+        expected = ['OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+
+
