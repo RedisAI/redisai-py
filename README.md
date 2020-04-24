@@ -4,9 +4,9 @@
 [![GitHub issues](https://img.shields.io/github/release/RedisAI/redisai-py.svg)](https://github.com/RedisAI/redisai-py/releases/latest)
 [![Codecov](https://codecov.io/gh/RedisAI/redisai-py/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisAI/redisai-py)
 
-
 # RedisAI Python Client
-
+[![Forum](https://img.shields.io/badge/Forum-RedisAI-blue)](https://forum.redislabs.com/c/modules/redisai)
+[![Gitter](https://badges.gitter.im/RedisLabs/RedisAI.svg)](https://gitter.im/RedisLabs/RedisAI?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Installation
 
