@@ -27,7 +27,7 @@ class Dag:
             if persist:
                 raise RuntimeError("READONLY requests cannot write (duh!) and should not "
                                    "have PERSISTing values")
-            self.commands = ['AI.DAGRUNRO']
+            self.commands = ['AI.DAGRUN_RO']
         else:
             self.commands = ['AI.DAGRUN']
         if load:
@@ -40,6 +40,8 @@ class Dag:
                 self.commands += ["PERSIST", 1, persist, '|>']
             else:
                 self.commands += ["PERSIST", len(persist), *persist, '|>']
+        elif load:
+            self.commands.append('|>')
         self.executor = executor
 
     def tensorset(self,
@@ -66,8 +68,8 @@ class Dag:
 
     def modelrun(self,
                  name: AnyStr,
-                 inputs: List[AnyStr],
-                 outputs: List[AnyStr]) -> Any:
+                 inputs: Union[AnyStr, List[AnyStr]],
+                 outputs: Union[AnyStr, List[AnyStr]]) -> Any:
         args = builder.modelrun(name, inputs, outputs)
         self.commands.extend(args)
         self.commands.append("|>")
@@ -117,8 +119,8 @@ class Client(StrictRedis):
                  batch: int = None,
                  minbatch: int = None,
                  tag: AnyStr = None,
-                 inputs: List[AnyStr] = None,
-                 outputs: List[AnyStr] = None) -> str:
+                 inputs: Union[AnyStr, List[AnyStr]] = None,
+                 outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
         """
         Set the model on provided key.
         :param name: str, Key name
@@ -151,8 +153,8 @@ class Client(StrictRedis):
 
     def modelrun(self,
                  name: AnyStr,
-                 inputs: List[AnyStr],
-                 outputs: List[AnyStr]) -> str:
+                 inputs: Union[AnyStr, List[AnyStr]],
+                 outputs: Union[AnyStr, List[AnyStr]]) -> str:
         args = builder.modelrun(name, inputs, outputs)
         return self.execute_command(*args).decode()
 
@@ -160,7 +162,8 @@ class Client(StrictRedis):
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
         args = builder.modelscan()
-        return utils.recursive_bytetransform(self.execute_command(*args), lambda x: x.decode())
+        result = self.execute_command(*args)
+        return utils.recursive_bytetransform(result, lambda x: x.decode())
 
     def tensorset(self,
                   key: AnyStr,

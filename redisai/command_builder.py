@@ -12,8 +12,9 @@ class Builder:
         return 'AI.CONFIG LOADBACKEND', identifier, path
 
     def modelset(self, name: AnyStr, backend: str, device: str, data: ByteString,
-                 batch: int, minbatch: int, tag: AnyStr, inputs: List[AnyStr],
-                 outputs: List[AnyStr]) -> Sequence:
+                 batch: int, minbatch: int, tag: AnyStr,
+                 inputs: Union[AnyStr, List[AnyStr]],
+                 outputs: Union[AnyStr, List[AnyStr]]) -> Sequence:
         args = ['AI.MODELSET', name, backend, device]
 
         if batch is not None:
@@ -27,8 +28,8 @@ class Builder:
             if not(all((inputs, outputs))):
                 raise ValueError(
                     'Require keyword arguments input and output for TF models')
-            args += ['INPUTS'] + utils.listify(inputs)
-            args += ['OUTPUTS'] + utils.listify(outputs)
+            args += ['INPUTS', *utils.listify(inputs)]
+            args += ['OUTPUTS', *utils.listify(outputs)]
         chunk_size = 500 * 1024 * 1024
         data_chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
         # TODO: need a test case for this
@@ -64,6 +65,11 @@ class Builder:
             dtype, shape, blob = utils.numpy2blob(tensor)
             args = ['AI.TENSORSET', key, dtype, *shape, 'BLOB', blob]
         elif isinstance(tensor, (list, tuple)):
+            try:
+                dtype = utils.dtype_dict[dtype.lower()]
+            except KeyError:
+                raise TypeError(f'``{dtype}`` is not supported by RedisAI. Currently '
+                                f'supported types are {list(utils.dtype_dict.keys())}')
             if shape is None:
                 shape = (len(tensor),)
             args = ['AI.TENSORSET', key, dtype, *shape, 'VALUES', *tensor]
@@ -92,7 +98,6 @@ class Builder:
         return args
 
     def scriptget(self, name: AnyStr, meta_only=False) -> Sequence:
-        # TODO scripget test
         args = ['AI.SCRIPTGET', name, 'META']
         if not meta_only:
             args.append('SOURCE')
