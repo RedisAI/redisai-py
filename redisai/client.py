@@ -86,7 +86,7 @@ class Dag:
 
 class Client(StrictRedis):
     """
-    redisai client built specific for RedisAI server module. It takes all the necessary
+    Redis client build specifically for the RedisAI module. It takes all the necessary
     parameters to establish the connection and an optional ``debug`` parameter on
     initialization
 
@@ -94,8 +94,8 @@ class Client(StrictRedis):
     ----------
 
     debug : bool
-        If the debug model is ON, then each command that's been sent to the server will
-        be printed on the terminal
+        If debug mode is ON, then each command that is sent to the server is
+        printed to the terminal
 
     Example
     -------
@@ -109,25 +109,24 @@ class Client(StrictRedis):
 
     def dag(self, load: Sequence = None, persist: Sequence = None,
             readonly: bool = False) -> Dag:
-        """ It returns a DAG object on which other dag-allowed operations can be called. For
-        more details about what is dag for RedisAI and the details you need to know about dag,
-        refer to the RedisAI documentation
+        """ It returns a DAG object on which other DAG-allowed operations can be called. For
+        more details about DAG in RedisAI, refer to the RedisAI documentation.
 
         Parameters
         ----------
         load : Union[AnyStr, List[AnyStr]]
-            Load the list of given values from the keyspace to dag scope
+            Load the list of given values from the keyspace to DAG scope
         persist : Union[AnyStr, List[AnyStr]]
-            Write the list of given key, values to the keyspace from dag scope
+            Write the list of given key, values to the keyspace from DAG scope
         readonly : bool
-            If True, it triggers AI.DAGRUN_RO, the read only dag which cannot write (PERSIST) to
+            If True, it triggers AI.DAGRUN_RO, the read only DAG which cannot write (PERSIST) to
             the keyspace. But since it can't write, it can execute on replicas
 
 
         Returns
         -------
         Any
-            Dag object which posses other operations permitted inside dag as attributes
+            Dag object which holds other operations permitted inside DAG as attributes
 
         Example
         -------
@@ -164,7 +163,7 @@ class Client(StrictRedis):
 
         Example
         -------
-        >>> con.loadbackend('TORCH', '/path/to/the/backend/object')
+        >>> con.loadbackend('TORCH', '/path/to/the/backend/redisai_torch.so')
         'OK'
         """
         args = builder.loadbackend(identifier, path)
@@ -182,6 +181,7 @@ class Client(StrictRedis):
                  outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
         """
         Set the model on provided key.
+
         Parameters
         ----------
         key : AnyStr
@@ -189,7 +189,8 @@ class Client(StrictRedis):
         backend : str
             Backend name. Allowed backends are TF, TORCH, TFLITE, ONNX
         device : str
-            Device name. Allowed devices are CPU and GPU
+            Device name. Allowed devices are CPU and GPU. If multiple GPUs are available,
+            it can be specified using the format GPU:<gpu number>. For example: GPU:0
         data : bytes
             Model graph read as bytes string
         batch : int
@@ -197,7 +198,7 @@ class Client(StrictRedis):
         minbatch : int
             Minimum number of samples required in a batch for model execution
         tag : AnyStr
-            Any string that will be saved in RedisAI as tags for the model
+            Any string that will be saved in RedisAI as tag for the model
         inputs : Union[AnyStr, List[AnyStr]]
             Input node(s) in the graph. Required only Tensorflow graphs
         outputs : Union[AnyStr, List[AnyStr]]
@@ -235,7 +236,7 @@ class Client(StrictRedis):
         key : AnyStr
             Model key in RedisAI
         meta_only : bool
-            If true, only the meta data will be fetched, not the model blob
+            If True, only the meta data will be fetched, not the model blob
 
         Returns
         -------
@@ -281,8 +282,8 @@ class Client(StrictRedis):
         """
         Run the model using input(s) which are already in the scope and are associated
         to some keys. Modelrun also needs the output key name(s) to store the output
-        from the model. The number of output from the model and the number of output
-        key provided here must be same. Otherwise, RedisAI throws an error
+        from the model. The number of outputs from the model and the number of keys
+        provided here must be same. Otherwise, RedisAI throws an error
 
         Parameters
         ----------
@@ -318,7 +319,8 @@ class Client(StrictRedis):
     def modelscan(self) -> List[List[AnyStr]]:
         """
         Returns the list of all the models in the RedisAI server. Modelscan API is
-        currently experimental and might remove or change in the future without warning
+        currently experimental and might be removed or changed in the future without
+        warning
 
         Returns
         -------
@@ -342,14 +344,14 @@ class Client(StrictRedis):
                   shape: Sequence[int] = None,
                   dtype: str = None) -> str:
         """
-        Set the tensor to a key at RedisAI
+        Set the tensor to a key in RedisAI
 
         Parameters
         ----------
         key : AnyStr
             The name of the tensor
         tensor : Union[np.ndarray, list, tuple]
-            A `np.ndarray` object or python list or tuple
+            A `np.ndarray` object or Python list or tuple
         shape : Sequence[int]
             Shape of the tensor. Required if `tensor` is list or tuple
         dtype : str
@@ -376,18 +378,18 @@ class Client(StrictRedis):
                   meta_only: bool = False) -> Union[dict, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy
-        array but it can be controlled using `as_type` argument and `meta_only` argument.
+        array but it can be controlled using the `as_type` and `meta_only` argument.
 
         Parameters
         ----------
         key : AnyStr
             The name of the tensor
         as_numpy : bool
-            If true, returns a numpy.ndarray. Returns the value as a list and the
+            If True, returns a numpy.ndarray. Returns the value as a list and the
             metadata in a dictionary if False. This flag also decides how to fetch
-            the value from RedisAI server, which also has performance implications
+            the value from the RedisAI server, which also has performance implications
         meta_only : bool
-            If true, the value is not retrieved, only the shape and the type
+            If True, the value is not retrieved, only the shape and the type
 
         Returns
         -------
@@ -409,23 +411,24 @@ class Client(StrictRedis):
 
     def scriptset(self, key: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
         """
-        Set the script to RedisAI. Action similar to Modelset. RedisAI uses TorchScript
-        engine to process the script. So the script should have only torchscript supported
-        usages. That being said, it's important to mention that, using redisai script to do
-        post processing or pre processing for a Tensorflow (or any other backend for the matter
-        of fact) is completely valid. For more details about torchscirpt and supported ops,
-        checkout torchscript documentation.
+        Set the script to RedisAI. Action similar to Modelset. RedisAI uses the TorchScript
+        engine to execute the script. So the script should have only TorchScript supported
+        constructs. That being said, it's important to mention that using redisai script
+        to do post processing or pre processing for a Tensorflow (or any other backend)
+        is completely valid. For more details about TorchScript and supported ops,
+        checkout TorchScript documentation.
 
         Parameters
         ----------
         key : AnyStr
             Script key at the server
         device : str
-            Device name. Allowed devices are CPU and GPU
+            Device name. Allowed devices are CPU and GPU. If multiple GPUs are available.
+            it can be specified using the format GPU:<gpu number>. For example: GPU:0
         script : str
-            Script itself, as a python string
+            Script itself, as a Python string
         tag : AnyStr
-            Any string that will be saved in RedisAI as tags for the model
+            Any string that will be saved in RedisAI as tag for the model
 
         Returns
         -------
@@ -434,11 +437,11 @@ class Client(StrictRedis):
 
         Note
         ----
-        Even though ``script`` is pure python code, it's a subset of python language and not
-        all the python operations are supported. For more details, checkout torchscript
-        documentation. It's also important to node that that the script is executed on high
-        performance C++ runtime instead of python interpreter. And hence ``script`` should not
-        have any import statements (A common mistake people make all the time)
+        Even though ``script`` is pure Python code, it's a subset of Python language and not
+        all the Python operations are supported. For more details, checkout TorchScript
+        documentation. It's also important to note that that the script is executed on a high
+        performance C++ runtime instead of the Python interpreter. And hence ``script`` should
+        not have any import statements (A common mistake people make all the time)
 
         Example
         -------
@@ -458,7 +461,7 @@ class Client(StrictRedis):
         key : AnyStr
             Key of the script
         meta_only : bool
-            If true, only the meta data will be fetched, not the script itself
+            If True, only the meta data will be fetched, not the script itself
 
         Returns
         -------

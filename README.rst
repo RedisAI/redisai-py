@@ -40,11 +40,8 @@ Installation
     $ pip install ml2rt
 
 
-`RedisAI example repo <https://github.com/RedisAI/redisai-examples>`_ shows few examples made
-using redisai-py under `python_client` section. Also, checkout
+`RedisAI example repo <https://github.com/RedisAI/redisai-examples>`_ shows few examples
+made using redisai-py under `python_client` folder. Also, checkout
 `ml2rt <https://github.com/hhsecond/ml2rt>`_ for convenient functions those might help in
-converting models (sparkml, sklearn, xgboost to ONNX), serializing models to disk,
-loading it back to redisai-py etc.
-
-
-
+converting models (sparkml, sklearn, xgboost to ONNX), serializing models to disk, loading
+it back to redisai-py etc.
