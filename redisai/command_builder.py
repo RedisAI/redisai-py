@@ -33,11 +33,8 @@ class Builder:
         chunk_size = 500 * 1024 * 1024
         data_chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
         # TODO: need a test case for this
-        final_args = [*args, 'BLOB', data_chunks.pop(0)]
-        if len(data_chunks) > 0:
-            for d in data_chunks:
-                final_args += [*args, d]
-        return final_args
+        args += ['BLOB', *data_chunks]
+        return args
 
     def modelget(self, name: AnyStr, meta_only=False) -> Sequence:
         args = ['AI.MODELGET', name, 'META']
