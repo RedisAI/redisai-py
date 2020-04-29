@@ -18,7 +18,7 @@ dtype_dict = {
 
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
-    """ Convert the numpy input from user to `Tensor` """
+    """Convert the numpy input from user to `Tensor`."""
     try:
         dtype = dtype_dict[str(tensor.dtype)]
     except KeyError:
@@ -29,7 +29,7 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
 
 
 def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str) -> np.ndarray:
-    """ Convert `BLOB` result from RedisAI to `np.ndarray` """
+    """Convert `BLOB` result from RedisAI to `np.ndarray`."""
     mm = {
         'FLOAT': 'float32',
         'DOUBLE': 'float64'
@@ -40,6 +40,7 @@ def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str) -> np.n
 
 
 def list2dict(lst):
+    """Convert the list from RedisAI to a dict."""
     if len(lst) % 2 != 0:
         raise RuntimeError("Can't unpack the list: {}".format(lst))
     out = {}
@@ -55,10 +56,8 @@ def list2dict(lst):
 def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
     """
     Recurse value, replacing each element of b'' with the appropriate element.
-    Function returns the same array after inplace operation which updates `arr`
 
-    :param target: Type of tensor | array
-    :param arr: The array with b'' numbers or recursive array of b''
+    Function returns the same array after inplace operation which updates `arr`
     """
     for ix in range(len(arr)):
         obj = arr[ix]
@@ -70,10 +69,16 @@ def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
 
 
 def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
+    """Wrap the ``inp`` with a list if it's not a list already."""
     return (inp,) if not isinstance(inp, (list, tuple)) else inp
 
 
-def tensorget_postprocessor(as_numpy, meta_only, rai_result):
+def tensorget_postprocessor(rai_result, as_numpy, meta_only):
+    """Process the tensorget output.
+
+    If ``as_numpy`` is True, it'll be converted to a numpy array. The required
+    information such as datatype and shape must be in ``rai_result`` itself.
+    """
     rai_result = list2dict(rai_result)
     if meta_only:
         return rai_result

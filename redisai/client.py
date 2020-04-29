@@ -62,8 +62,8 @@ class Dag:
         self.commands.extend(args)
         self.commands.append("|>")
         self.result_processors.append(partial(utils.tensorget_postprocessor,
-                                              as_numpy,
-                                              meta_only))
+                                              as_numpy=as_numpy,
+                                              meta_only=meta_only))
         return self
 
     def modelrun(self,
@@ -407,7 +407,7 @@ class Client(StrictRedis):
         """
         args = builder.tensorget(key, as_numpy, meta_only)
         res = self.execute_command(*args)
-        return utils.tensorget_postprocessor(as_numpy, meta_only, res)
+        return utils.tensorget_postprocessor(res, as_numpy, meta_only)
 
     def scriptset(self, key: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
         """
