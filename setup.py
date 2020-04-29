@@ -1,18 +1,13 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
-try:
-    exec(open('redisai/version.py', encoding='utf-8').read())
-except TypeError:
-    exec(open('redisai/version.py').read())
 
 with open('README.rst') as f:
     long_description = f.read()
 
-
 setup(
     name='redisai',
-    version=__version__,  # comes from redisai/version.py
+    version='0.5.0',
     description='RedisAI Python Client',
     long_description=long_description,
     long_description_content_type='text/markdown',
