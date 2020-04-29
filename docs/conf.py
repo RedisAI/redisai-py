@@ -1,9 +1,7 @@
-import redisai
-
 project = 'redisai-py'
 copyright = '2020, RedisLabs'
 author = 'RedisLabs'
-release = redisai.__version__
+release = '1.0.0'
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
               'sphinx.ext.extlinks',
