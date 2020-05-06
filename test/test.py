@@ -106,6 +106,18 @@ class ClientTestCase(RedisAITestBase):
         with self.assertRaises(TypeError):
             con.tensorset('trying', stringarr)
 
+    def test_modelset_errors(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        with self.assertRaises(ValueError):
+            con.modelset('m', 'tf', 'wrongdevice', model_pb,
+                         inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        with self.assertRaises(ValueError):
+            con.modelset('m', 'wrongbackend', 'cpu', model_pb,
+                         inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+
+
     def test_modelget_meta(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)

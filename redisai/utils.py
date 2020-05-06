@@ -16,6 +16,9 @@ dtype_dict = {
     'uint32': 'UINT32',
     'uint64': 'UINT64'}
 
+allowed_devices = {'CPU', 'GPU'}
+allowed_backends = {'TF', 'TFLITE', 'TORCH', 'ONNX'}
+
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
