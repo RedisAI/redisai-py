@@ -15,6 +15,10 @@ class Builder:
                  batch: int, minbatch: int, tag: AnyStr,
                  inputs: Union[AnyStr, List[AnyStr]],
                  outputs: Union[AnyStr, List[AnyStr]]) -> Sequence:
+        if device.upper() not in utils.allowed_devices:
+            raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
+        if backend.upper() not in utils.allowed_backends:
+            raise ValueError(f"Backend not allowed. Use any from {utils.allowed_backends}")
         args = ['AI.MODELSET', name, backend, device]
 
         if batch is not None:
@@ -87,6 +91,8 @@ class Builder:
         return args
 
     def scriptset(self, name: AnyStr, device: str, script: str, tag: AnyStr = None) -> Sequence:
+        if device.upper() not in utils.allowed_devices:
+            raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
         args = ['AI.SCRIPTSET', name, device]
         if tag:
             args += ['TAG', tag]
