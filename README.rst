@@ -17,6 +17,9 @@ redisai-py
 .. image:: https://codecov.io/gh/RedisAI/redisai-py/branch/master/graph/badge.svg
         :target: https://codecov.io/gh/RedisAI/redisai-py
 
+.. image:: https://readthedocs.org/projects/redisai-py/badge/?version=latest
+        :target: https://redisai-py.readthedocs.io/en/latest/?badge=latest        
+        
 
 redisai-py is the Python client for RedisAI. Checkout the
 `documentation <https://redisai-py.readthedocs.io/en/latest/>`_ for API details and examples
