@@ -117,7 +117,6 @@ class ClientTestCase(RedisAITestBase):
             con.modelset('m', 'wrongbackend', 'cpu', model_pb,
                          inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
 
-
     def test_modelget_meta(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
@@ -125,7 +124,7 @@ class ClientTestCase(RedisAITestBase):
         con.modelset('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         model = con.modelget('m', meta_only=True)
-        self.assertEqual(model, {'backend': 'TF', 'batchsize': 0, 'device': 'cpu', 'inputs': [b'a', b'b'], 'minbatchsize': 0, 'outputs': [b'mul'], 'tag': 'v1.0'})
+        self.assertEqual(model, {'backend': 'TF', 'batchsize': 0, 'device': 'cpu', 'inputs': ['a', 'b'], 'minbatchsize': 0, 'outputs': ['mul'], 'tag': 'v1.0'})
                          
     def test_modelrun_non_list_input_output(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
