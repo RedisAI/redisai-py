@@ -5,11 +5,11 @@ import warnings
 from redis import StrictRedis
 import numpy as np
 
-from . import utils
-from .command_builder import Builder
+from . import command_builder as builder
+from .postprocessor import Processor
 
 
-builder = Builder()
+processor = Processor()
 
 
 def enable_debug(f):
@@ -61,7 +61,7 @@ class Dag:
         args = builder.tensorget(key, as_numpy, meta_only)
         self.commands.extend(args)
         self.commands.append("|>")
-        self.result_processors.append(partial(utils.tensorget_postprocessor,
+        self.result_processors.append(partial(processor.tensorget,
                                               as_numpy=as_numpy,
                                               meta_only=meta_only))
         return self
@@ -167,7 +167,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.loadbackend(identifier, path)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.loadbackend(res)
 
     def modelset(self,
                  key: AnyStr,
@@ -225,7 +226,8 @@ class Client(StrictRedis):
         """
         args = builder.modelset(key, backend, device, data,
                                 batch, minbatch, tag, inputs, outputs)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.modelset(res)
 
     def modelget(self, key: AnyStr, meta_only=False) -> dict:
         """
@@ -250,8 +252,8 @@ class Client(StrictRedis):
         {'backend': 'TF', 'device': 'cpu', 'tag': 'v1.0'}
         """
         args = builder.modelget(key, meta_only)
-        rv = self.execute_command(*args)
-        return utils.list2dict(rv)
+        res = self.execute_command(*args)
+        return processor.modelget(res)
 
     def modeldel(self, key: AnyStr) -> str:
         """
@@ -273,7 +275,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.modeldel(key)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.modeldel(res)
 
     def modelrun(self,
                  key: AnyStr,
@@ -314,7 +317,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.modelrun(key, inputs, outputs)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.modelrun(res)
 
     def modelscan(self) -> List[List[AnyStr]]:
         """
@@ -335,8 +339,8 @@ class Client(StrictRedis):
         warnings.warn("Experimental: Model List API is experimental and might change "
                       "in the future without any notice", UserWarning)
         args = builder.modelscan()
-        result = self.execute_command(*args)
-        return utils.recursive_bytetransform(result, lambda x: x.decode())
+        res = self.execute_command(*args)
+        return processor.modelscan(res)
 
     def tensorset(self,
                   key: AnyStr,
@@ -371,7 +375,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.tensorset(key, tensor, shape, dtype)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.tensorset(res)
 
     def tensorget(self,
                   key: AnyStr, as_numpy: bool = True,
@@ -407,7 +412,7 @@ class Client(StrictRedis):
         """
         args = builder.tensorget(key, as_numpy, meta_only)
         res = self.execute_command(*args)
-        return utils.tensorget_postprocessor(res, as_numpy, meta_only)
+        return processor.tensorget(res, as_numpy, meta_only)
 
     def scriptset(self, key: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
         """
@@ -450,7 +455,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.scriptset(key, device, script, tag)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.scriptset(res)
 
     def scriptget(self, key: AnyStr, meta_only=False) -> dict:
         """
@@ -474,8 +480,8 @@ class Client(StrictRedis):
         {'device': 'cpu'}
         """
         args = builder.scriptget(key, meta_only)
-        ret = self.execute_command(*args)
-        return utils.list2dict(ret)
+        res = self.execute_command(*args)
+        return processor.scriptget(res)
 
     def scriptdel(self, key: AnyStr) -> str:
         """
@@ -497,7 +503,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.scriptdel(key)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.scriptdel(res)
 
     def scriptrun(self,
                   key: AnyStr,
@@ -532,8 +539,8 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.scriptrun(key, function, inputs, outputs)
-        out = self.execute_command(*args)
-        return out.decode()
+        res = self.execute_command(*args)
+        return processor.scriptrun(res)
 
     def scriptscan(self) -> List[List[AnyStr]]:
         """
@@ -553,7 +560,8 @@ class Client(StrictRedis):
         warnings.warn("Experimental: Script List API is experimental and might change "
                       "in the future without any notice", UserWarning)
         args = builder.scriptscan()
-        return utils.recursive_bytetransform(self.execute_command(*args), lambda x: x.decode())
+        res = self.execute_command(*args)
+        return processor.scriptscan(res)
 
     def infoget(self, key: AnyStr) -> dict:
         """
@@ -581,8 +589,8 @@ class Client(StrictRedis):
         'duration': 0, 'samples': 0, 'calls': 0, 'errors': 0}
         """
         args = builder.infoget(key)
-        ret = self.execute_command(*args)
-        return utils.list2dict(ret)
+        res = self.execute_command(*args)
+        return processor.infoget(res)
 
     def inforeset(self, key: AnyStr) -> str:
         """
@@ -604,4 +612,5 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.inforeset(key)
-        return self.execute_command(*args).decode()
+        res = self.execute_command(*args)
+        return processor.inforeset(res)
