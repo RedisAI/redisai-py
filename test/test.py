@@ -131,7 +131,7 @@ class ClientTestCase(RedisAITestBase):
         model_pb = load_model(model_path)
         con = self.get_client()
         con.modelset('m', 'tf', 'cpu', model_pb,
-                     inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+                     inputs=['a', 'b'], outputs=['mul'], tag='v1.7')
         con.tensorset('a', (2, 3), dtype='float')
         con.tensorset('b', (2, 3), dtype='float')
         ret = con.modelrun('m', ['a', 'b'], 'out')
@@ -290,8 +290,9 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
         con = self.get_client()
+        # TODO: RedisAI modelscan issue
         con.modelset("pt_model", 'torch', 'cpu', ptmodel)
-        mlist = con.modelscan() # TODO: modelscan issues in RedisAI
+        mlist = con.modelscan()
         self.assertEqual(mlist, [['pt_model', ''], ['m', 'v1.2']])
 
     def test_script_scan(self):
@@ -314,7 +315,7 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
-        con.modelset("pt_model", 'torch', 'cpu', ptmodel, tag='v1.0')
+        con.modelset("pt_model", 'torch', 'cpu', ptmodel, tag='v7.0')
 
     def test_dagrun_with_load(self):
         con = self.get_client()
@@ -404,4 +405,37 @@ class DagTestCase(RedisAITestBase):
         expected = ['OK', np.array([[4., 6.], [4., 6.]], dtype=np.float32)]
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
 
+
+class PipelineTest(RedisAITestBase):
+
+    def test_pipeline_non_transaction(self):
+        con = self.get_client()
+        arr = np.array([[2., 3.], [2., 3.]], dtype=np.float32)
+        pipe = con.pipeline(transaction=False)
+        pipe = pipe.tensorset('a', arr).set('native', 1)
+        pipe = pipe.tensorget('a', as_numpy=False)
+        pipe = pipe.tensorget('a', as_numpy=True).tensorget('a', meta_only=True)
+        result = pipe.execute()
+        expected = [b'OK', True, {'dtype': 'FLOAT', 'shape': [2, 2], 'values': [2.0, 3.0, 2.0, 3.0]}, arr, {'dtype': 'FLOAT', 'shape': [2, 2]}]
+        for res, exp in zip(result, expected):
+            if isinstance(res, np.ndarray):
+                self.assertTrue(np.allclose(exp, res))
+            else:
+                self.assertEqual(res, exp)
+
+    def test_pipeline_transaction(self):
+        con = self.get_client()
+        arr = np.array([[2., 3.], [2., 3.]], dtype=np.float32)
+        pipe = con.pipeline(transaction=True)
+        pipe = pipe.tensorset('a', arr).set('native', 1)
+        pipe = pipe.tensorget('a', as_numpy=False)
+        pipe = pipe.tensorget('a', as_numpy=True).tensorget('a', meta_only=True)
+        result = pipe.execute()
+        expected = [b'OK', True, {'dtype': 'FLOAT', 'shape': [2, 2], 'values': [2.0, 3.0, 2.0, 3.0]}, arr,
+                    {'dtype': 'FLOAT', 'shape': [2, 2]}]
+        for res, exp in zip(result, expected):
+            if isinstance(res, np.ndarray):
+                self.assertTrue(np.allclose(exp, res))
+            else:
+                self.assertEqual(res, exp)
 

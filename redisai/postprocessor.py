@@ -48,6 +48,7 @@ class Processor:
         return utils.list2dict(res)
 
 
+# These functions are only doing decoding on the output from redis
 decoder = staticmethod(decoder)
 decoding_functions = ('loadbackend', 'modelset', 'modeldel', 'modelrun', 'tensorset',
                       'scriptset', 'scriptdel', 'scriptrun', 'inforeset')
