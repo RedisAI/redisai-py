@@ -594,6 +594,7 @@ class Pipeline(RedisPipeline, Client):
         return super().tensorget(key, as_numpy, meta_only)
 
     def _execute_transaction(self, *args, **kwargs):
+        # TODO: Blocking commands like MODELRUN, SCRIPTRUN and DAGRUN won't work
         res = super()._execute_transaction(*args, **kwargs)
         for i in range(len(res)):
             # tensorget will have minimum 4 values if meta_only = True
