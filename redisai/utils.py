@@ -74,20 +74,3 @@ def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
 def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
     """Wrap the ``inp`` with a list if it's not a list already."""
     return (inp,) if not isinstance(inp, (list, tuple)) else inp
-
-
-def tensorget_postprocessor(rai_result, as_numpy, meta_only):
-    """Process the tensorget output.
-
-    If ``as_numpy`` is True, it'll be converted to a numpy array. The required
-    information such as datatype and shape must be in ``rai_result`` itself.
-    """
-    rai_result = list2dict(rai_result)
-    if meta_only:
-        return rai_result
-    elif as_numpy is True:
-        return blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'])
-    else:
-        target = float if rai_result['dtype'] in ('FLOAT', 'DOUBLE') else int
-        recursive_bytetransform(rai_result['values'], target)
-        return rai_result
