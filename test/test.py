@@ -334,8 +334,9 @@ class DagTestCase(RedisAITestBase):
     def test_dagrun_with_persist(self):
         con = self.get_client()
 
-        dag = con.dag(persist='wrongkey')  # this won't raise Error
-        dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float').run()
+        with self.assertRaises(ResponseError):
+            dag = con.dag(persist='wrongkey')
+            dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float').run()
 
         dag = con.dag(persist=['b'])
         dag.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
