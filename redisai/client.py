@@ -632,7 +632,7 @@ class Dag:
                 self.commands += ["PERSIST", 1, persist, '|>']
             else:
                 self.commands += ["PERSIST", len(persist), *persist, '|>']
-        elif load:
+        else:
             self.commands.append('|>')
         self.executor = executor
 
