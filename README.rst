@@ -18,8 +18,13 @@ redisai-py
         :target: https://codecov.io/gh/RedisAI/redisai-py
 
 .. image:: https://readthedocs.org/projects/redisai-py/badge/?version=latest
-        :target: https://redisai-py.readthedocs.io/en/latest/?badge=latest        
-        
+        :target: https://redisai-py.readthedocs.io/en/latest/?badge=latest  
+
+.. image:: https://img.shields.io/badge/Forum-RedisAI-blue
+        :target: https://forum.redislabs.com/c/modules/redisai
+
+.. image:: https://img.shields.io/discord/697882427875393627?style=flat-square
+        :target: https://discord.gg/rTQm7UZ       
 
 redisai-py is the Python client for RedisAI. Checkout the
 `documentation <https://redisai-py.readthedocs.io/en/latest/>`_ for API details and examples
