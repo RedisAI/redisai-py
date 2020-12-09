@@ -1,4 +1,5 @@
-from typing import Union, ByteString, Sequence, List, AnyStr, Callable
+from functools import wraps
+from typing import Union, Sequence, List, AnyStr, Callable
 import numpy as np
 
 
@@ -31,13 +32,16 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     return dtype, shape, blob
 
 
-def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str) -> np.ndarray:
+def blob2numpy(value: AnyStr, shape: Union[list, tuple], dtype: str) -> np.ndarray:
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
     mm = {
         'FLOAT': 'float32',
         'DOUBLE': 'float64'
     }
     dtype = mm.get(dtype, dtype.lower())
+    if isinstance(value, str):
+        # if `decode_response` is enabled while initializing the class
+        value = value.encode()
     a = np.frombuffer(value, dtype=dtype)
     return a.reshape(shape)
 
@@ -48,12 +52,19 @@ def list2dict(lst):
         raise RuntimeError("Can't unpack the list: {}".format(lst))
     out = {}
     for i in range(0, len(lst), 2):
-        key = lst[i].decode().lower()
+        key = lst[i]
         val = lst[i + 1]
-        if key != 'blob' and isinstance(val, bytes):
-            val = val.decode()
         out[key] = val
     return out
+
+
+def list2numpy(lst):
+    dct = list2dict(lst)
+    try:
+        nparray = blob2numpy(dct['blob'], dct['shape'], dct['dtype'])
+    except KeyError:
+        nparray = blob2numpy(dct[b'blob'], dct[b'shape'], dct[b'dtype'])
+    return nparray
 
 
 def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
@@ -74,3 +85,11 @@ def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
 def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
     """Wrap the ``inp`` with a list if it's not a list already."""
     return (inp,) if not isinstance(inp, (list, tuple)) else inp
+
+
+def enable_debug(f):
+    @wraps(f)
+    def wrapper(*args):
+        print(*args)
+        return f(*args)
+    return wrapper

@@ -1,12 +1,12 @@
 from typing import Union, AnyStr, ByteString, List, Sequence
 import numpy as np
-from . import utils
+from redisai import utils
 
 # TODO: mypy check
 
 
-def loadbackend(identifier: AnyStr, path: AnyStr) -> Sequence:
-    return 'AI.CONFIG LOADBACKEND', identifier, path
+def loadbackend(backend_name: AnyStr, path: AnyStr) -> Sequence:
+    return 'AI.CONFIG LOADBACKEND', backend_name, path
 
 
 def modelset(name: AnyStr, backend: str, device: str, data: ByteString,
