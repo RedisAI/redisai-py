@@ -7,7 +7,6 @@ from redisai import Client
 from ml2rt import load_model
 from redis.exceptions import ResponseError
 
-
 DEBUG = False
 
 
@@ -35,7 +34,7 @@ class RedisAITestBase(TestCase):
         self.get_client().flushall()
 
     def get_client(self, debug=DEBUG):
-        return Client(debug)
+        return Client(debug, decode_responses=True)
 
 
 class ClientTestCase(RedisAITestBase):
