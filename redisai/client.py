@@ -669,7 +669,8 @@ class Dag:
         return self
 
     def run(self):
-        results = self.executor(*self.commands)
+        commands = self.commands[:-1]  # removing the last "|>
+        results = self.executor(*commands)
         if self.enable_postprocess:
             out = []
             for res, fn in zip(results, self.result_processors):
