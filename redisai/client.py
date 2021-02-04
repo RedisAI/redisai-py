@@ -335,7 +335,7 @@ class Client(StrictRedis):
         return res if not self.enable_postprocess else processor.tensorset(res)
 
     def tensorget(self,
-                  key: AnyStr, as_numpy: bool = True,
+                  key: AnyStr, as_numpy: bool = True, as_numpy_mutable: bool = False,
                   meta_only: bool = False) -> Union[dict, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy
@@ -349,6 +349,9 @@ class Client(StrictRedis):
             If True, returns a numpy.ndarray. Returns the value as a list and the
             metadata in a dictionary if False. This flag also decides how to fetch
             the value from the RedisAI server, which also has performance implications
+        as_numpy_mutable : bool
+            If True, returns a a mutable numpy.ndarray object by copy the tensor data. Otherwise (as long as_numpy=True)
+            the returned numpy.ndarray will use the original tensor buffer and will be for read-only
         meta_only : bool
             If True, the value is not retrieved, only the shape and the type
 
@@ -368,8 +371,7 @@ class Client(StrictRedis):
         """
         args = builder.tensorget(key, as_numpy, meta_only)
         res = self.execute_command(*args)
-        return res if not self.enable_postprocess else processor.tensorget(res,
-                                                                    as_numpy, meta_only)
+        return res if not self.enable_postprocess else processor.tensorget(res, as_numpy, as_numpy_mutable, meta_only)
 
     def scriptset(self, key: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
         """
@@ -587,11 +589,12 @@ class Pipeline(RedisPipeline, Client):
     def dag(self, *args, **kwargs):
         raise RuntimeError("Pipeline object doesn't allow DAG creation currently")
 
-    def tensorget(self, key, as_numpy=True, meta_only=False):
+    def tensorget(self, key, as_numpy=True, as_numpy_mutable=False, meta_only=False):
         self.tensorget_processors.append(partial(processor.tensorget,
                                                  as_numpy=as_numpy,
+                                                 as_numpy_mutable=as_numpy_mutable,
                                                  meta_only=meta_only))
-        return super().tensorget(key, as_numpy, meta_only)
+        return super().tensorget(key, as_numpy, as_numpy_mutable, meta_only)
 
     def _execute_transaction(self, *args, **kwargs):
         # TODO: Blocking commands like MODELRUN, SCRIPTRUN and DAGRUN won't work
@@ -648,13 +651,14 @@ class Dag:
         return self
 
     def tensorget(self,
-                  key: AnyStr, as_numpy: bool = True,
+                  key: AnyStr, as_numpy: bool = True, as_numpy_mutable: bool = False,
                   meta_only: bool = False) -> Any:
-        args = builder.tensorget(key, as_numpy, meta_only)
+        args = builder.tensorget(key, as_numpy, as_numpy_mutable)
         self.commands.extend(args)
         self.commands.append("|>")
         self.result_processors.append(partial(processor.tensorget,
                                               as_numpy=as_numpy,
+                                              as_numpy_mutable=as_numpy_mutable,
                                               meta_only=meta_only))
         return self
 

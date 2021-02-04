@@ -31,14 +31,17 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     return dtype, shape, blob
 
 
-def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str) -> np.ndarray:
+def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str, mutable: bool) -> np.ndarray:
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
     mm = {
         'FLOAT': 'float32',
         'DOUBLE': 'float64'
     }
     dtype = mm.get(dtype, dtype.lower())
-    a = np.frombuffer(value, dtype=dtype)
+    if mutable:
+        a = np.fromstring(value, dtype=dtype)
+    else:
+        a = np.frombuffer(value, dtype=dtype)
     return a.reshape(shape)
 
 
