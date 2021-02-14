@@ -4,28 +4,26 @@ import numpy as np
 
 
 # TODO: rename variable
-mm = {
-        'FLOAT': 'float32',
-        'DOUBLE': 'float64'
-    }
+mm = {"FLOAT": "float32", "DOUBLE": "float64"}
 
 
 dtype_dict = {
-    'float': 'FLOAT',
-    'double': 'DOUBLE',
-    'float32': 'FLOAT',
-    'float64': 'DOUBLE',
-    'int8': 'INT8',
-    'int16': 'INT16',
-    'int32': 'INT32',
-    'int64': 'INT64',
-    'uint8': 'UINT8',
-    'uint16': 'UINT16',
-    'uint32': 'UINT32',
-    'uint64': 'UINT64'}
+    "float": "FLOAT",
+    "double": "DOUBLE",
+    "float32": "FLOAT",
+    "float64": "DOUBLE",
+    "int8": "INT8",
+    "int16": "INT16",
+    "int32": "INT32",
+    "int64": "INT64",
+    "uint8": "UINT8",
+    "uint16": "UINT16",
+    "uint32": "UINT32",
+    "uint64": "UINT64",
+}
 
-allowed_devices = {'CPU', 'GPU'}
-allowed_backends = {'TF', 'TFLITE', 'TORCH', 'ONNX'}
+allowed_devices = {"CPU", "GPU"}
+allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
@@ -39,7 +37,9 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     return dtype, shape, blob
 
 
-def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str, mutable: bool) -> np.ndarray:
+def blob2numpy(
+    value: ByteString, shape: Union[list, tuple], dtype: str, mutable: bool
+) -> np.ndarray:
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
     if isinstance(value, str):
         # if `decode_response` is enabled while initializing the class
@@ -67,9 +67,11 @@ def list2dict(lst):
 def list2numpy(lst, mutable=False):
     dct = list2dict(lst)
     try:
-        nparray = blob2numpy(dct['blob'], dct['shape'], dct['dtype'], mutable=mutable)
+        nparray = blob2numpy(dct["blob"], dct["shape"], dct["dtype"], mutable=mutable)
     except KeyError:
-        nparray = blob2numpy(dct[b'blob'], dct[b'shape'], dct[b'dtype'], mutable=mutable)
+        nparray = blob2numpy(
+            dct[b"blob"], dct[b"shape"], dct[b"dtype"], mutable=mutable
+        )
     return nparray
 
 
@@ -98,4 +100,5 @@ def enable_debug(f):
     def wrapper(*args):
         print(*args)
         return f(*args)
+
     return wrapper

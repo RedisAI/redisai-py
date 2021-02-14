@@ -34,6 +34,7 @@ class BaseClient(StrictRedis):
     >>> from redisai import Client
     >>> con = Client(host='localhost', port=6379)
     """
+
     def __init__(self, debug=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if debug:
@@ -65,16 +66,18 @@ class BaseClient(StrictRedis):
         args = builder.loadbackend(backend_name, path)
         return self.execute_command(*args)
 
-    def modelset(self,
-                 key: AnyStr,
-                 backend: str,
-                 device: str,
-                 data: ByteString,
-                 batch: int = None,
-                 minbatch: int = None,
-                 tag: AnyStr = None,
-                 inputs: Union[AnyStr, List[AnyStr]] = None,
-                 outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
+    def modelset(
+        self,
+        key: AnyStr,
+        backend: str,
+        device: str,
+        data: ByteString,
+        batch: int = None,
+        minbatch: int = None,
+        tag: AnyStr = None,
+        inputs: Union[AnyStr, List[AnyStr]] = None,
+        outputs: Union[AnyStr, List[AnyStr]] = None,
+    ) -> str:
         """
         Set the model on provided key.
 
@@ -119,8 +122,9 @@ class BaseClient(StrictRedis):
         ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         'OK'
         """
-        args = builder.modelset(key, backend, device, data,
-                                batch, minbatch, tag, inputs, outputs)
+        args = builder.modelset(
+            key, backend, device, data, batch, minbatch, tag, inputs, outputs
+        )
         return self.execute_command(*args)
 
     def modelget(self, key: AnyStr, meta_only=False) -> dict:
@@ -171,10 +175,12 @@ class BaseClient(StrictRedis):
         args = builder.modeldel(key)
         return self.execute_command(*args)
 
-    def modelrun(self,
-                 key: AnyStr,
-                 inputs: Union[AnyStr, List[AnyStr]],
-                 outputs: Union[AnyStr, List[AnyStr]]) -> str:
+    def modelrun(
+        self,
+        key: AnyStr,
+        inputs: Union[AnyStr, List[AnyStr]],
+        outputs: Union[AnyStr, List[AnyStr]],
+    ) -> str:
         """
         Run the model using input(s) which are already in the scope and are associated
         to some keys. Modelrun also needs the output key name(s) to store the output
@@ -228,16 +234,21 @@ class BaseClient(StrictRedis):
         >>> con.modelscan()
         [['pt_model', ''], ['m', 'v1.2']]
         """
-        warnings.warn("Experimental: Model List API is experimental and might change "
-                      "in the future without any notice", UserWarning)
+        warnings.warn(
+            "Experimental: Model List API is experimental and might change "
+            "in the future without any notice",
+            UserWarning,
+        )
         args = builder.modelscan()
         return self.execute_command(*args)
 
-    def tensorset(self,
-                  key: AnyStr,
-                  tensor: Union[np.ndarray, list, tuple],
-                  shape: Sequence[int] = None,
-                  dtype: str = None) -> str:
+    def tensorset(
+        self,
+        key: AnyStr,
+        tensor: Union[np.ndarray, list, tuple],
+        shape: Sequence[int] = None,
+        dtype: str = None,
+    ) -> str:
         """
         Set the tensor to a key in RedisAI
 
@@ -268,10 +279,13 @@ class BaseClient(StrictRedis):
         args = builder.tensorset(key, tensor, shape, dtype)
         return self.execute_command(*args)
 
-    def tensorget(self,
-                  key: AnyStr, as_numpy: bool = True,
-                  as_numpy_mutable: bool = False,
-                  meta_only: bool = False) -> Union[dict, np.ndarray]:
+    def tensorget(
+        self,
+        key: AnyStr,
+        as_numpy: bool = True,
+        as_numpy_mutable: bool = False,
+        meta_only: bool = False,
+    ) -> Union[dict, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy
         array but it can be controlled using the `as_type` and `meta_only` argument.
@@ -316,7 +330,9 @@ class BaseClient(StrictRedis):
         else:
             return res
 
-    def scriptset(self, key: AnyStr, device: str, script: str, tag: AnyStr = None) -> str:
+    def scriptset(
+        self, key: AnyStr, device: str, script: str, tag: AnyStr = None
+    ) -> str:
         """
         Set the script to RedisAI. Action similar to Modelset. RedisAI uses the TorchScript
         engine to execute the script. So the script should have only TorchScript supported
@@ -406,12 +422,13 @@ class BaseClient(StrictRedis):
         args = builder.scriptdel(key)
         return self.execute_command(*args)
 
-    def scriptrun(self,
-                  key: AnyStr,
-                  function: AnyStr,
-                  inputs: Union[AnyStr, Sequence[AnyStr]],
-                  outputs: Union[AnyStr, Sequence[AnyStr]]
-                  ) -> str:
+    def scriptrun(
+        self,
+        key: AnyStr,
+        function: AnyStr,
+        inputs: Union[AnyStr, Sequence[AnyStr]],
+        outputs: Union[AnyStr, Sequence[AnyStr]],
+    ) -> str:
         """
         Run an already set script. Similar to modelrun
 
@@ -456,8 +473,11 @@ class BaseClient(StrictRedis):
         >>> con.scriptscan()
         [['ket1', 'v1.0'], ['ket2', '']]
         """
-        warnings.warn("Experimental: Script List API is experimental and might change "
-                      "in the future without any notice", UserWarning)
+        warnings.warn(
+            "Experimental: Script List API is experimental and might change "
+            "in the future without any notice",
+            UserWarning,
+        )
         args = builder.scriptscan()
         return self.execute_command(*args)
 

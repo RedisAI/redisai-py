@@ -11,11 +11,13 @@ class Dag:
         self.result_processors = []
         if readonly:
             if persist:
-                raise RuntimeError("READONLY requests cannot write (duh!) and should not "
-                                   "have PERSISTing values")
-            self.commands = ['AI.DAGRUN_RO']
+                raise RuntimeError(
+                    "READONLY requests cannot write (duh!) and should not "
+                    "have PERSISTing values"
+                )
+            self.commands = ["AI.DAGRUN_RO"]
         else:
-            self.commands = ['AI.DAGRUN']
+            self.commands = ["AI.DAGRUN"]
         if load:
             if not isinstance(load, (list, tuple)):
                 self.commands += ["LOAD", 1, load]
@@ -23,27 +25,29 @@ class Dag:
                 self.commands += ["LOAD", len(load), *load]
         if persist:
             if not isinstance(persist, (list, tuple)):
-                self.commands += ["PERSIST", 1, persist, '|>']
+                self.commands += ["PERSIST", 1, persist, "|>"]
             else:
-                self.commands += ["PERSIST", len(persist), *persist, '|>']
+                self.commands += ["PERSIST", len(persist), *persist, "|>"]
         else:
-            self.commands.append('|>')
+            self.commands.append("|>")
         self.executor = executor
 
-    def tensorset(self,
-                  key: AnyStr,
-                  tensor: Union[np.ndarray, list, tuple],
-                  shape: Sequence[int] = None,
-                  dtype: str = None) -> Any:
+    def tensorset(
+        self,
+        key: AnyStr,
+        tensor: Union[np.ndarray, list, tuple],
+        shape: Sequence[int] = None,
+        dtype: str = None,
+    ) -> Any:
         args = builder.tensorset(key, tensor, shape, dtype)
         self.commands.extend(args)
         self.commands.append("|>")
         self.result_processors.append(None)
         return self
 
-    def tensorget(self,
-                  key: AnyStr, as_numpy: bool = True,
-                  meta_only: bool = False) -> Any:
+    def tensorget(
+        self, key: AnyStr, as_numpy: bool = True, meta_only: bool = False
+    ) -> Any:
         args = builder.tensorget(key, as_numpy, meta_only)
         self.commands.extend(args)
         self.commands.append("|>")
@@ -55,10 +59,12 @@ class Dag:
             self.result_processors.append(None)
         return self
 
-    def modelrun(self,
-                 key: AnyStr,
-                 inputs: Union[AnyStr, List[AnyStr]],
-                 outputs: Union[AnyStr, List[AnyStr]]) -> Any:
+    def modelrun(
+        self,
+        key: AnyStr,
+        inputs: Union[AnyStr, List[AnyStr]],
+        outputs: Union[AnyStr, List[AnyStr]],
+    ) -> Any:
         args = builder.modelrun(key, inputs, outputs)
         self.commands.extend(args)
         self.commands.append("|>")

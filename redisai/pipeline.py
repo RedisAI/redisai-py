@@ -8,8 +8,9 @@ from redisai import command_builder as builder
 
 class Pipeline(RedisPipeline, BaseClient):
     def __init__(self, *args, **kwargs):
-        warnings.warn("Pipeling AI commands through this client is experimental.",
-                      UserWarning)
+        warnings.warn(
+            "Pipeling AI commands through this client is experimental.", UserWarning
+        )
         self.index4numpy_convert = []
         super().__init__(*args, **kwargs)
 
