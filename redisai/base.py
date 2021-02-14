@@ -11,6 +11,7 @@ from redisai import command_builder as builder
 class BaseClient(StrictRedis):
     """
     TODO: fix docstring
+    # TODO: Black formatting
     Redis client build specifically for the RedisAI module. It takes all the necessary
     parameters to establish the connection and an optional ``debug`` parameter on
     initialization
@@ -269,6 +270,7 @@ class BaseClient(StrictRedis):
 
     def tensorget(self,
                   key: AnyStr, as_numpy: bool = True,
+                  as_numpy_mutable: bool = False,
                   meta_only: bool = False) -> Union[dict, np.ndarray]:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy
@@ -282,6 +284,10 @@ class BaseClient(StrictRedis):
             If True, returns a numpy.ndarray. Returns the value as a list and the
             metadata in a dictionary if False. This flag also decides how to fetch
             the value from the RedisAI server, which also has performance implications
+        as_numpy_mutable : bool
+            If True, returns a a mutable numpy.ndarray object by copy the tensor data.
+            Otherwise (as long as_numpy=True) the returned numpy.ndarray will use the
+            original tensor buffer and will be for read-only
         meta_only : bool
             If True, the value is not retrieved, only the shape and the type
 
@@ -305,6 +311,8 @@ class BaseClient(StrictRedis):
             raise ValueError("`as_numpy` and `meta_only` cannot be True together")
         elif as_numpy:
             return utils.list2numpy(res)
+        elif as_numpy_mutable:
+            return utils.list2numpy(res, mutable=True)
         else:
             return res
 

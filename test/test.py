@@ -101,6 +101,13 @@ class ClientTestCase(RedisAITestBase):
         ret = con.tensorset('x', values)
         self.assertEqual(ret, 'OK')
 
+        # By default tensorget returns immutable, unless as_numpy_mutable is set as True
+        ret = con.tensorget('x')
+        self.assertRaises(ValueError, np.put, ret, 0, 1)
+        ret = con.tensorget('x', as_numpy_mutable=True)
+        np.put(ret, 0, 1)
+        self.assertEqual(ret[0], 1)
+
         stringarr = np.array('dummy')
         with self.assertRaises(TypeError):
             con.tensorset('trying', stringarr)

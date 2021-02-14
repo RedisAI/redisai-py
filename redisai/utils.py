@@ -1,6 +1,13 @@
 from functools import wraps
-from typing import Union, Sequence, List, AnyStr, Callable
+from typing import Union, Sequence, List, AnyStr, Callable, ByteString
 import numpy as np
+
+
+# TODO: rename variable
+mm = {
+        'FLOAT': 'float32',
+        'DOUBLE': 'float64'
+    }
 
 
 dtype_dict = {
@@ -32,17 +39,16 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     return dtype, shape, blob
 
 
-def blob2numpy(value: AnyStr, shape: Union[list, tuple], dtype: str) -> np.ndarray:
+def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str, mutable: bool) -> np.ndarray:
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
-    mm = {
-        'FLOAT': 'float32',
-        'DOUBLE': 'float64'
-    }
-    dtype = mm.get(dtype, dtype.lower())
     if isinstance(value, str):
         # if `decode_response` is enabled while initializing the class
         value = value.encode()
-    a = np.frombuffer(value, dtype=dtype)
+    dtype = mm.get(dtype, dtype.lower())
+    if mutable:
+        a = np.fromstring(value, dtype=dtype)
+    else:
+        a = np.frombuffer(value, dtype=dtype)
     return a.reshape(shape)
 
 
@@ -58,12 +64,12 @@ def list2dict(lst):
     return out
 
 
-def list2numpy(lst):
+def list2numpy(lst, mutable=False):
     dct = list2dict(lst)
     try:
-        nparray = blob2numpy(dct['blob'], dct['shape'], dct['dtype'])
+        nparray = blob2numpy(dct['blob'], dct['shape'], dct['dtype'], mutable=mutable)
     except KeyError:
-        nparray = blob2numpy(dct[b'blob'], dct[b'shape'], dct[b'dtype'])
+        nparray = blob2numpy(dct[b'blob'], dct[b'shape'], dct[b'dtype'], mutable=mutable)
     return nparray
 
 
