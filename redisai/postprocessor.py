@@ -19,17 +19,19 @@ class Processor:
         return utils.recursive_bytetransform(res, lambda x: x.decode())
 
     @staticmethod
-    def tensorget(res, as_numpy, meta_only):
+    def tensorget(res, as_numpy, as_numpy_mutable, meta_only):
         """Process the tensorget output.
 
         If ``as_numpy`` is True, it'll be converted to a numpy array. The required
         information such as datatype and shape must be in ``rai_result`` itself.
         """
         rai_result = utils.list2dict(res)
-        if meta_only:
+        if meta_only is True:
             return rai_result
+        elif as_numpy_mutable is True:
+            return utils.blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'], mutable=True)
         elif as_numpy is True:
-            return utils.blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'])
+            return utils.blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'], mutable=False)
         else:
             target = float if rai_result['dtype'] in ('FLOAT', 'DOUBLE') else int
             utils.recursive_bytetransform(rai_result['values'], target)
