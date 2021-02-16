@@ -11,7 +11,7 @@ from redisai import command_builder as builder
 class BaseClient(StrictRedis):
     """
     TODO: fix docstring
-    # TODO: Black formatting
+    TODO: Black formatting
     Redis client build specifically for the RedisAI module. It takes all the necessary
     parameters to establish the connection and an optional ``debug`` parameter on
     initialization
@@ -35,7 +35,10 @@ class BaseClient(StrictRedis):
     >>> con = Client(host='localhost', port=6379)
     """
 
-    def __init__(self, debug=False, *args, **kwargs):
+    def __init__(self, debug=False, decode_responses=False, *args, **kwargs):
+        if decode_responses:
+            raise RuntimeError("RedisAI client is not enabled to "
+                               "work with `decode_response`")
         super().__init__(*args, **kwargs)
         if debug:
             self.execute_command = utils.enable_debug(super().execute_command)

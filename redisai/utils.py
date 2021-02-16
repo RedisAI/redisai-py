@@ -75,21 +75,6 @@ def list2numpy(lst, mutable=False):
     return nparray
 
 
-def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
-    """
-    Recurse value, replacing each element of b'' with the appropriate element.
-
-    Function returns the same array after inplace operation which updates `arr`
-    """
-    for ix in range(len(arr)):
-        obj = arr[ix]
-        if isinstance(obj, list):
-            recursive_bytetransform(obj, target)
-        else:
-            arr[ix] = target(obj)
-    return arr
-
-
 def listify(inp: Union[str, Sequence[str]]) -> Sequence[str]:
     """Wrap the ``inp`` with a list if it's not a list already."""
     return (inp,) if not isinstance(inp, (list, tuple)) else inp

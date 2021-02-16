@@ -35,7 +35,7 @@ class RedisAITestBase(TestCase):
         self.get_client().flushall()
 
     def get_client(self, debug=DEBUG):
-        return Client(debug, decode_responses=True)
+        return Client(debug)
 
 
 class ClientTestCase(RedisAITestBase):
@@ -43,6 +43,7 @@ class ClientTestCase(RedisAITestBase):
         con = self.get_client()
         con.tensorset("x", (2, 3, 4, 5), dtype="float")
         result = con.tensorget("x", as_numpy=False)
+        breakpoint()
         self.assertEqual([2, 3, 4, 5], result["values"])
         self.assertEqual([4], result["shape"])
 
@@ -396,11 +397,6 @@ class DagTestCase(RedisAITestBase):
 
     def test_dagrun_with_persist(self):
         con = self.get_client()
-
-        with self.assertRaises(ResponseError):
-            dag = con.dag(persist="wrongkey")
-            dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float").run()
-
         dag = con.dag(persist=["b"])
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
