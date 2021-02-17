@@ -8,7 +8,7 @@ from redisai import utils
 from redisai import command_builder as builder
 
 
-class BaseClient(StrictRedis):
+class RedisAIOpsMixin(StrictRedis):
     """
     TODO: fix docstring
     TODO: Black formatting
@@ -35,11 +35,29 @@ class BaseClient(StrictRedis):
     >>> con = Client(host='localhost', port=6379)
     """
 
-    def __init__(self, debug=False, decode_responses=False, *args, **kwargs):
+    def __init__(
+        self,
+        debug=False,
+        enable_postprocess=True,
+        decode_responses=False,
+        *args,
+        **kwargs
+    ):
+        if decode_responses and enable_postprocess:
+            raise RuntimeError(
+                "`decode_response` and `enable_postprocess` cannot be set "
+                "together. For more details, checkout the documentation"
+            )
         if decode_responses:
-            raise RuntimeError("RedisAI client is not enabled to "
-                               "work with `decode_response`")
-        super().__init__(*args, **kwargs)
+            warnings.warn(
+                "`decode_response` will not work with most of RedisAI"
+                " specific commands. If you need RedisAI commands to "
+                "be decoded and post-proccessed to sensible python "
+                "datastructures set `enable_postprocess` to `True`",
+                UserWarning,
+            )
+        super().__init__(decode_responses=decode_responses, *args, **kwargs)
+        self.enable_postprocess = enable_postprocess
         if debug:
             self.execute_command = utils.enable_debug(super().execute_command)
 

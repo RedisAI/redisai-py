@@ -2,11 +2,11 @@ import warnings
 
 from redis.client import Pipeline as RedisPipeline
 from redisai import utils
-from redisai.base import BaseClient
+from redisai.redisai_ops import RedisAIOpsMixin
 from redisai import command_builder as builder
 
 
-class Pipeline(RedisPipeline, BaseClient):
+class Pipeline(RedisPipeline, RedisAIOpsMixin):
     def __init__(self, *args, **kwargs):
         warnings.warn(
             "Pipeling AI commands through this client is experimental.", UserWarning

@@ -2,12 +2,12 @@ from typing import Union, List, Sequence
 
 import numpy as np
 
-from redisai.base import BaseClient
+from redisai.redisai_ops import RedisAIOpsMixin
 from redisai.dag import Dag
 from redisai.pipeline import Pipeline
 
 
-class Client(BaseClient):
+class Client(RedisAIOpsMixin):
     def pipeline(self, transaction: bool = True, shard_hint: bool = None) -> "Pipeline":
         """
         It follows the same pipeline implementation of native redis client but enables it

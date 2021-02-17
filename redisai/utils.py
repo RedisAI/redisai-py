@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Union, Sequence, List, AnyStr, Callable, ByteString
+from typing import Union, Sequence, ByteString
 import numpy as np
 
 
