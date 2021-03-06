@@ -3,21 +3,22 @@ import numpy as np
 
 
 dtype_dict = {
-    'float': 'FLOAT',
-    'double': 'DOUBLE',
-    'float32': 'FLOAT',
-    'float64': 'DOUBLE',
-    'int8': 'INT8',
-    'int16': 'INT16',
-    'int32': 'INT32',
-    'int64': 'INT64',
-    'uint8': 'UINT8',
-    'uint16': 'UINT16',
-    'uint32': 'UINT32',
-    'uint64': 'UINT64'}
+    "float": "FLOAT",
+    "double": "DOUBLE",
+    "float32": "FLOAT",
+    "float64": "DOUBLE",
+    "int8": "INT8",
+    "int16": "INT16",
+    "int32": "INT32",
+    "int64": "INT64",
+    "uint8": "UINT8",
+    "uint16": "UINT16",
+    "uint32": "UINT32",
+    "uint64": "UINT64",
+}
 
-allowed_devices = {'CPU', 'GPU'}
-allowed_backends = {'TF', 'TFLITE', 'TORCH', 'ONNX'}
+allowed_devices = {"CPU", "GPU"}
+allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
@@ -31,12 +32,11 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     return dtype, shape, blob
 
 
-def blob2numpy(value: ByteString, shape: Union[list, tuple], dtype: str, mutable: bool) -> np.ndarray:
+def blob2numpy(
+    value: ByteString, shape: Union[list, tuple], dtype: str, mutable: bool
+) -> np.ndarray:
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
-    mm = {
-        'FLOAT': 'float32',
-        'DOUBLE': 'float64'
-    }
+    mm = {"FLOAT": "float32", "DOUBLE": "float64"}
     dtype = mm.get(dtype, dtype.lower())
     if mutable:
         a = np.fromstring(value, dtype=dtype)
@@ -53,7 +53,7 @@ def list2dict(lst):
     for i in range(0, len(lst), 2):
         key = lst[i].decode().lower()
         val = lst[i + 1]
-        if key != 'blob' and isinstance(val, bytes):
+        if key != "blob" and isinstance(val, bytes):
             val = val.decode()
         out[key] = val
     return out

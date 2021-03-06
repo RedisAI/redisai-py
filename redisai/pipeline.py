@@ -20,17 +20,24 @@ class Pipeline(redis.client.Pipeline):
         super().__init__(*args, **kwargs)
 
     def tensorget(self, key, as_numpy=True, as_numpy_mutable=False, meta_only=False):
-        self.tensorget_processors.append(partial(processor.tensorget,
-                                                 as_numpy=as_numpy,
-                                                 as_numpy_mutable=as_numpy_mutable,
-                                                 meta_only=meta_only))
+        self.tensorget_processors.append(
+            partial(
+                processor.tensorget,
+                as_numpy=as_numpy,
+                as_numpy_mutable=as_numpy_mutable,
+                meta_only=meta_only,
+            )
+        )
         args = builder.tensorget(key, as_numpy, meta_only)
         return self.execute_command(*args)
 
-    def tensorset(self, key: AnyStr,
-                  tensor: Union[np.ndarray, list, tuple],
-                  shape: Sequence[int] = None,
-                  dtype: str = None) -> str:
+    def tensorset(
+        self,
+        key: AnyStr,
+        tensor: Union[np.ndarray, list, tuple],
+        shape: Sequence[int] = None,
+        dtype: str = None,
+    ) -> str:
         args = builder.tensorset(key, tensor, shape, dtype)
         return self.execute_command(*args)
 
