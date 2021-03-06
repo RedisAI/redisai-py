@@ -3,11 +3,12 @@ from typing import Union, AnyStr, ByteString, List, Sequence, Any
 import warnings
 
 from redis import StrictRedis
-from redis.client import Pipeline as RedisPipeline
 import numpy as np
 
-from . import command_builder as builder
-from .postprocessor import Processor
+from redisai import command_builder as builder
+from redisai.dag import Dag
+from redisai.pipeline import Pipeline
+from redisai.postprocessor import Processor
 
 
 processor = Processor()
@@ -37,6 +38,9 @@ class Client(StrictRedis):
     >>> from redisai import Client
     >>> con = Client(host='localhost', port=6379)
     """
+    REDISAI_COMMANDS_RESPONSE_CALLBACKS = {
+    }
+
     def __init__(self, debug=False, enable_postprocess=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if debug:
@@ -573,115 +577,6 @@ class Client(StrictRedis):
         args = builder.inforeset(key)
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.inforeset(res)
-
-
-class Pipeline(RedisPipeline, Client):
-    def __init__(self, enable_postprocess, *args, **kwargs):
-        warnings.warn("Pipeling AI commands through this client is experimental.",
-                      UserWarning)
-        self.enable_postprocess = False
-        if enable_postprocess:
-            warnings.warn("Postprocessing is enabled but not allowed in pipelines."
-                          "Disable postprocessing to remove this warning.", UserWarning)
-        self.tensorget_processors = []
-        super().__init__(*args, **kwargs)
-
-    def dag(self, *args, **kwargs):
-        raise RuntimeError("Pipeline object doesn't allow DAG creation currently")
-
-    def tensorget(self, key, as_numpy=True, as_numpy_mutable=False, meta_only=False):
-        self.tensorget_processors.append(partial(processor.tensorget,
-                                                 as_numpy=as_numpy,
-                                                 as_numpy_mutable=as_numpy_mutable,
-                                                 meta_only=meta_only))
-        return super().tensorget(key, as_numpy, as_numpy_mutable, meta_only)
-
-    def _execute_transaction(self, *args, **kwargs):
-        # TODO: Blocking commands like MODELRUN, SCRIPTRUN and DAGRUN won't work
-        res = super()._execute_transaction(*args, **kwargs)
-        for i in range(len(res)):
-            # tensorget will have minimum 4 values if meta_only = True
-            if isinstance(res[i], list) and len(res[i]) >= 4:
-                res[i] = self.tensorget_processors.pop(0)(res[i])
-        return res
-
-    def _execute_pipeline(self, *args, **kwargs):
-        res = super()._execute_pipeline(*args, **kwargs)
-        for i in range(len(res)):
-            # tensorget will have minimum 4 values if meta_only = True
-            if isinstance(res[i], list) and len(res[i]) >= 4:
-                res[i] = self.tensorget_processors.pop(0)(res[i])
-        return res
-
-
-class Dag:
-    def __init__(self, load, persist, executor, readonly=False, postprocess=True):
-        self.result_processors = []
-        self.enable_postprocess = True
-        if readonly:
-            if persist:
-                raise RuntimeError("READONLY requests cannot write (duh!) and should not "
-                                   "have PERSISTing values")
-            self.commands = ['AI.DAGRUN_RO']
-        else:
-            self.commands = ['AI.DAGRUN']
-        if load:
-            if not isinstance(load, (list, tuple)):
-                self.commands += ["LOAD", 1, load]
-            else:
-                self.commands += ["LOAD", len(load), *load]
-        if persist:
-            if not isinstance(persist, (list, tuple)):
-                self.commands += ["PERSIST", 1, persist, '|>']
-            else:
-                self.commands += ["PERSIST", len(persist), *persist, '|>']
-        else:
-            self.commands.append('|>')
-        self.executor = executor
-
-    def tensorset(self,
-                  key: AnyStr,
-                  tensor: Union[np.ndarray, list, tuple],
-                  shape: Sequence[int] = None,
-                  dtype: str = None) -> Any:
-        args = builder.tensorset(key, tensor, shape, dtype)
-        self.commands.extend(args)
-        self.commands.append("|>")
-        self.result_processors.append(bytes.decode)
-        return self
-
-    def tensorget(self,
-                  key: AnyStr, as_numpy: bool = True, as_numpy_mutable: bool = False,
-                  meta_only: bool = False) -> Any:
-        args = builder.tensorget(key, as_numpy, as_numpy_mutable)
-        self.commands.extend(args)
-        self.commands.append("|>")
-        self.result_processors.append(partial(processor.tensorget,
-                                              as_numpy=as_numpy,
-                                              as_numpy_mutable=as_numpy_mutable,
-                                              meta_only=meta_only))
-        return self
-
-    def modelrun(self,
-                 key: AnyStr,
-                 inputs: Union[AnyStr, List[AnyStr]],
-                 outputs: Union[AnyStr, List[AnyStr]]) -> Any:
-        args = builder.modelrun(key, inputs, outputs)
-        self.commands.extend(args)
-        self.commands.append("|>")
-        self.result_processors.append(bytes.decode)
-        return self
-
-    def run(self):
-        commands = self.commands[:-1]  # removing the last "|>
-        results = self.executor(*commands)
-        if self.enable_postprocess:
-            out = []
-            for res, fn in zip(results, self.result_processors):
-                out.append(fn(res))
-        else:
-            out = results
-        return out
 
 
 def enable_debug(f):
