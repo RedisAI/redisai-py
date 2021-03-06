@@ -9,6 +9,8 @@ from redis.exceptions import ResponseError
 
 
 DEBUG = False
+tf_graph = "graph.pb"
+torch_graph = "pt-minimal.pt"
 
 
 class Capturing(list):
@@ -114,7 +116,7 @@ class ClientTestCase(RedisAITestBase):
             con.tensorset("trying", stringarr)
 
     def test_modelset_errors(self):
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
         with self.assertRaises(ValueError):
@@ -139,7 +141,7 @@ class ClientTestCase(RedisAITestBase):
             )
 
     def test_modelget_meta(self):
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
         con.modelset(
@@ -160,7 +162,7 @@ class ClientTestCase(RedisAITestBase):
         )
 
     def test_modelrun_non_list_input_output(self):
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
         con.modelset(
@@ -173,7 +175,7 @@ class ClientTestCase(RedisAITestBase):
 
     def test_nonasciichar(self):
         nonascii = "ĉ"
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
         con.modelset(
@@ -192,8 +194,8 @@ class ClientTestCase(RedisAITestBase):
         self.assertTrue((np.allclose(tensor, [4.0, 9.0])))
 
     def test_run_tf_model(self):
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
-        bad_model_path = os.path.join(MODEL_DIR, "pt-minimal.pt")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
+        bad_model_path = os.path.join(MODEL_DIR, torch_graph)
 
         model_pb = load_model(model_path)
         wrong_model_pb = load_model(bad_model_path)
@@ -295,7 +297,7 @@ class ClientTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(outtensor, [4.0]))
 
     def test_run_pytorch_model(self):
-        model_path = os.path.join(MODEL_DIR, "pt-minimal.pt")
+        model_path = os.path.join(MODEL_DIR, torch_graph)
         ptmodel = load_model(model_path)
         con = self.get_client()
         con.modelset("pt_model", "torch", "cpu", ptmodel, tag="v1.0")
@@ -317,7 +319,7 @@ class ClientTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(output, [8]))
 
     def test_info(self):
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
         con.modelset("m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"])
@@ -345,13 +347,13 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(first_info, third_info)  # before modelrun and after reset
 
     def test_model_scan(self):
-        model_path = os.path.join(MODEL_DIR, "graph.pb")
+        model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
         con.modelset(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"], tag="v1.2"
         )
-        model_path = os.path.join(MODEL_DIR, "pt-minimal.pt")
+        model_path = os.path.join(MODEL_DIR, torch_graph)
         ptmodel = load_model(model_path)
         con = self.get_client()
         # TODO: RedisAI modelscan issue
@@ -377,7 +379,7 @@ class DagTestCase(RedisAITestBase):
     def setUp(self):
         super().setUp()
         con = self.get_client()
-        model_path = os.path.join(MODEL_DIR, "pt-minimal.pt")
+        model_path = os.path.join(MODEL_DIR, torch_graph)
         ptmodel = load_model(model_path)
         con.modelset("pt_model", "torch", "cpu", ptmodel, tag="v7.0")
 

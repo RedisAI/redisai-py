@@ -91,7 +91,7 @@ def tensorset(
             )
         except AttributeError:
             raise TypeError(
-                "tensorset() missing argument 'dtype' or " "value of 'dtype' is None"
+                "tensorset() missing argument 'dtype' or value of 'dtype' is None"
             )
         if shape is None:
             shape = (len(tensor),)
