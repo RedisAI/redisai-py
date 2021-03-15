@@ -1,7 +1,7 @@
 project = "redisai-py"
 copyright = "2020, RedisLabs"
 author = "RedisLabs"
-release = "1.0.1"
+release = "1.0.2"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",

@@ -7,7 +7,7 @@ with open("README.rst") as f:
 
 setup(
     name="redisai",
-    version="1.0.1",
+    version="1.0.2",
     description="RedisAI Python Client",
     long_description=long_description,
     long_description_content_type="text/x-rst",
