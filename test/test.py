@@ -397,8 +397,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(expected, result)
         self.assertRaises(ResponseError, con.tensorget, "b")
 
-    def dagrun_with_persist(self):
-        # TODO: disabling for now
+    def test_dagrun_with_persist(self):
         con = self.get_client()
 
         with self.assertRaises(ResponseError):
