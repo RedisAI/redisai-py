@@ -6,12 +6,11 @@ def decoder(val):
 
 
 class Processor:
-
     @staticmethod
     def modelget(res):
         resdict = utils.list2dict(res)
-        utils.recursive_bytetransform(resdict['inputs'], lambda x: x.decode())
-        utils.recursive_bytetransform(resdict['outputs'], lambda x: x.decode())
+        utils.recursive_bytetransform(resdict["inputs"], lambda x: x.decode())
+        utils.recursive_bytetransform(resdict["outputs"], lambda x: x.decode())
         return resdict
 
     @staticmethod
@@ -29,12 +28,22 @@ class Processor:
         if meta_only is True:
             return rai_result
         elif as_numpy_mutable is True:
-            return utils.blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'], mutable=True)
+            return utils.blob2numpy(
+                rai_result["blob"],
+                rai_result["shape"],
+                rai_result["dtype"],
+                mutable=True,
+            )
         elif as_numpy is True:
-            return utils.blob2numpy(rai_result['blob'], rai_result['shape'], rai_result['dtype'], mutable=False)
+            return utils.blob2numpy(
+                rai_result["blob"],
+                rai_result["shape"],
+                rai_result["dtype"],
+                mutable=False,
+            )
         else:
-            target = float if rai_result['dtype'] in ('FLOAT', 'DOUBLE') else int
-            utils.recursive_bytetransform(rai_result['values'], target)
+            target = float if rai_result["dtype"] in ("FLOAT", "DOUBLE") else int
+            utils.recursive_bytetransform(rai_result["values"], target)
             return rai_result
 
     @staticmethod
@@ -52,7 +61,16 @@ class Processor:
 
 # These functions are only doing decoding on the output from redis
 decoder = staticmethod(decoder)
-decoding_functions = ('loadbackend', 'modelset', 'modeldel', 'modelrun', 'tensorset',
-                      'scriptset', 'scriptdel', 'scriptrun', 'inforeset')
+decoding_functions = (
+    "loadbackend",
+    "modelset",
+    "modeldel",
+    "modelrun",
+    "tensorset",
+    "scriptset",
+    "scriptdel",
+    "scriptrun",
+    "inforeset",
+)
 for fn in decoding_functions:
     setattr(Processor, fn, decoder)
