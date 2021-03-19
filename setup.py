@@ -15,7 +15,7 @@ setup(
     author="RedisLabs",
     author_email="oss@redislabs.com",
     packages=find_packages(),
-    install_requires=["redis", "hiredis", "numpy"],
+    install_requires=["redis", "hiredis", "numpy", "redis-py-cluster"],
     python_requires=">=3.6",
     classifiers=[
         "Development Status :: 4 - Beta",
