@@ -113,7 +113,8 @@ class ClientTestCase(RedisAITestBase):
         with self.assertRaises(TypeError):
             con.tensorset('trying', stringarr)
 
-    def test_modelset_errors(self):
+    # AI.MODELSET is deprecated by AI.MODELSTORE.
+    def test_deprecated_modelset(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
@@ -123,25 +124,56 @@ class ClientTestCase(RedisAITestBase):
         with self.assertRaises(ValueError):
             con.modelset('m', 'wrongbackend', 'cpu', model_pb,
                          inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        con.modelset('m', 'tf', 'cpu', model_pb,
+                     inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        model = con.modelget('m', meta_only=True)
+        self.assertEqual(model, {'backend': 'TF', 'batchsize': 0, 'device': 'cpu', 'inputs': ['a', 'b'], 'minbatchsize': 0, 'outputs': ['mul'], 'tag': 'v1.0'})
+
+    def test_modelstore_errors(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        with self.assertRaises(ValueError) as e:
+            con.modelstore('m', 'tf', 'wrongdevice', model_pb,
+                         inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        self.assertTrue(str(e.exception).startswith("Device not allowed"))
+        with self.assertRaises(ValueError) as e:
+            con.modelstore('m', 'wrongbackend', 'cpu', model_pb,
+                         inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        self.assertTrue(str(e.exception).startswith("Backend not allowed"))
+        with self.assertRaises(ValueError) as e:
+            con.modelstore('m', 'tf', 'cpu', model_pb,
+                         inputs=['a', 'b'], outputs=['mul'], tag='v1.0', minbatch=2)
+        self.assertEqual(str(e.exception), "Minbatch is not allowed without batch")
+        with self.assertRaises(ValueError) as e:
+            con.modelstore('m', 'tf', 'cpu', model_pb,
+                         inputs=['a', 'b'], outputs=['mul'], tag='v1.0', batch=4, minbatchtimeout=1000)
+        self.assertTrue(str(e.exception), "Minbatchtimeout is not allowed without minbatch")
+        with self.assertRaises(ValueError) as e:
+            con.modelstore('m', 'tf', 'cpu', model_pb, tag='v1.0')
+        self.assertTrue(str(e.exception), "Require keyword arguments inputs and outputs for TF models")
+        with self.assertRaises(ValueError) as e:
+            con.modelstore('m', 'torch', 'cpu', model_pb, inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        self.assertTrue(str(e.exception), "Inputs and outputs keywords should not be specified for this backend")
 
     def test_modelget_meta(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
-        con.modelset('m', 'tf', 'cpu', model_pb,
+        con.modelstore('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         model = con.modelget('m', meta_only=True)
         self.assertEqual(model, {'backend': 'TF', 'batchsize': 0, 'device': 'cpu', 'inputs': ['a', 'b'], 'minbatchsize': 0, 'outputs': ['mul'], 'tag': 'v1.0'})
                          
-    def test_modelrun_non_list_input_output(self):
+    def test_modelexecute_non_list_input_output(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
-        con.modelset('m', 'tf', 'cpu', model_pb,
+        con.modelstore('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.7')
         con.tensorset('a', (2, 3), dtype='float')
         con.tensorset('b', (2, 3), dtype='float')
-        ret = con.modelrun('m', ['a', 'b'], 'out')
+        ret = con.modelexecute('m', ['a', 'b'], 'out')
         self.assertEqual(ret, 'OK')
 
     def test_nonasciichar(self):
@@ -149,11 +181,11 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
-        con.modelset('m' + nonascii, 'tf', 'cpu', model_pb,
+        con.modelstore('m' + nonascii, 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         con.tensorset('a' + nonascii, (2, 3), dtype='float')
         con.tensorset('b', (2, 3), dtype='float')
-        con.modelrun('m' + nonascii, ['a' + nonascii, 'b'], ['c' + nonascii])
+        con.modelexecute('m' + nonascii, ['a' + nonascii, 'b'], ['c' + nonascii])
         tensor = con.tensorget('c' + nonascii)
         self.assertTrue((np.allclose(tensor, [4., 9.])))
 
@@ -165,32 +197,22 @@ class ClientTestCase(RedisAITestBase):
         wrong_model_pb = load_model(bad_model_path)
 
         con = self.get_client()
-        con.modelset('m', 'tf', 'cpu', model_pb,
+        con.modelstore('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         con.modeldel('m')
         self.assertRaises(ResponseError, con.modelget, 'm')
-        con.modelset('m', 'tf', 'cpu', model_pb,
+        con.modelstore('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs='mul', tag='v1.0')
 
         # wrong model
-        self.assertRaises(ResponseError,
-                          con.modelset, 'm', 'tf', 'cpu',
-                          wrong_model_pb,
-                          inputs=['a', 'b'], outputs=['mul'])
-        # missing inputs/outputs
-        self.assertRaises(ValueError,
-                          con.modelset, 'm', 'tf', 'cpu',
-                          wrong_model_pb)
-
-        # wrong backend
-        self.assertRaises(ResponseError,
-                          con.modelset, 'm', 'torch', 'cpu',
-                          model_pb,
-                          inputs=['a', 'b'], outputs=['mul'])
+        with self.assertRaises(ResponseError) as e:
+            con.modelstore('m', 'tf', 'cpu',
+            wrong_model_pb, inputs=['a', 'b'], outputs=['mul'])
+        self.assertEqual(str(e.exception), "Invalid GraphDef")
 
         con.tensorset('a', (2, 3), dtype='float')
         con.tensorset('b', (2, 3), dtype='float')
-        con.modelrun('m', ['a', 'b'], ['c'])
+        con.modelexecute('m', ['a', 'b'], ['c'])
         tensor = con.tensorget('c')
         self.assertTrue(np.allclose([4, 9], tensor))
         model_det = con.modelget('m')
@@ -226,10 +248,10 @@ class ClientTestCase(RedisAITestBase):
         mlmodel_path = os.path.join(MODEL_DIR, 'boston.onnx')
         onnxml_model = load_model(mlmodel_path)
         con = self.get_client()
-        con.modelset("onnx_model", 'onnx', 'cpu', onnxml_model)
+        con.modelstore("onnx_model", 'onnx', 'cpu', onnxml_model)
         tensor = np.ones((1, 13)).astype(np.float32)
         con.tensorset("input", tensor)
-        con.modelrun("onnx_model", ["input"], ["output"])
+        con.modelexecute("onnx_model", ["input"], ["output"])
         # tests `convert_to_num`
         outtensor = con.tensorget("output", as_numpy=False)
         self.assertEqual(int(float(outtensor['values'][0])), 24)
@@ -239,10 +261,10 @@ class ClientTestCase(RedisAITestBase):
         dlmodel_path = os.path.join(MODEL_DIR, 'findsquare.onnx')
         onnxdl_model = load_model(dlmodel_path)
         con = self.get_client()
-        con.modelset("onnx_model", 'onnx', 'cpu', onnxdl_model)
+        con.modelstore("onnx_model", 'onnx', 'cpu', onnxdl_model)
         tensor = np.array((2,)).astype(np.float32)
         con.tensorset("input", tensor)
-        con.modelrun("onnx_model", ["input"], ["output"])
+        con.modelexecute("onnx_model", ["input"], ["output"])
         outtensor = con.tensorget("output")
         self.assertTrue(np.allclose(outtensor, [4.0]))
 
@@ -250,10 +272,10 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
         con = self.get_client()
-        con.modelset("pt_model", 'torch', 'cpu', ptmodel, tag='v1.0')
+        con.modelstore("pt_model", 'torch', 'cpu', ptmodel, tag='v1.0')
         con.tensorset('a', [2, 3, 2, 3], shape=(2, 2), dtype='float')
         con.tensorset('b', [2, 3, 2, 3], shape=(2, 2), dtype='float')
-        con.modelrun("pt_model", ["a", "b"], ["output"])
+        con.modelexecute("pt_model", ["a", "b"], ["output"])
         output = con.tensorget('output', as_numpy=False)
         self.assertTrue(np.allclose(output['values'], [4, 6, 4, 6]))
 
@@ -261,18 +283,33 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, 'mnist_model_quant.tflite')
         tflmodel = load_model(model_path)
         con = self.get_client()
-        con.modelset("tfl_model", 'tflite', 'cpu', tflmodel)
+        con.modelstore("tfl_model", 'tflite', 'cpu', tflmodel)
         img = np.random.random((1, 1, 28, 28)).astype(np.float)
         con.tensorset('img', img)
-        con.modelrun("tfl_model", ["img"], ["output1", "output2"])
+        con.modelexecute("tfl_model", ["img"], ["output1", "output2"])
         output = con.tensorget('output1')
         self.assertTrue(np.allclose(output, [8]))
+
+    # AI.MODELRUN is deprecated by AI.MODELEXECUTE
+    def test_deprecated_modelrun(self):
+        model_path = os.path.join(MODEL_DIR, 'graph.pb')
+        model_pb = load_model(model_path)
+
+        con = self.get_client()
+        con.modelstore('m', 'tf', 'cpu', model_pb,
+                       inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+
+        con.tensorset('a', (2, 3), dtype='float')
+        con.tensorset('b', (2, 3), dtype='float')
+        con.modelrun('m', ['a', 'b'], ['c'])
+        tensor = con.tensorget('c')
+        self.assertTrue(np.allclose([4, 9], tensor))
 
     def test_info(self):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
-        con.modelset('m', 'tf', 'cpu', model_pb,
+        con.modelstore('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'])
         first_info = con.infoget('m')
         expected = {'key': 'm', 'type': 'MODEL', 'backend': 'TF', 'device': 'cpu',
@@ -280,8 +317,8 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(first_info, expected)
         con.tensorset('a', (2, 3), dtype='float')
         con.tensorset('b', (2, 3), dtype='float')
-        con.modelrun('m', ['a', 'b'], ['c'])
-        con.modelrun('m', ['a', 'b'], ['c'])
+        con.modelexecute('m', ['a', 'b'], ['c'])
+        con.modelexecute('m', ['a', 'b'], ['c'])
         second_info = con.infoget('m')
         self.assertEqual(second_info['calls'], 2)  # 2 model runs
         con.inforeset('m')
@@ -292,13 +329,13 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, 'graph.pb')
         model_pb = load_model(model_path)
         con = self.get_client()
-        con.modelset('m', 'tf', 'cpu', model_pb,
+        con.modelstore('m', 'tf', 'cpu', model_pb,
                      inputs=['a', 'b'], outputs=['mul'], tag='v1.2')
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
         con = self.get_client()
         # TODO: RedisAI modelscan issue
-        con.modelset("pt_model", 'torch', 'cpu', ptmodel)
+        con.modelstore("pt_model", 'torch', 'cpu', ptmodel)
         mlist = con.modelscan()
         self.assertEqual(mlist, [['pt_model', ''], ['m', 'v1.2']])
 
@@ -322,7 +359,7 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         model_path = os.path.join(MODEL_DIR, 'pt-minimal.pt')
         ptmodel = load_model(model_path)
-        con.modelset("pt_model", 'torch', 'cpu', ptmodel, tag='v7.0')
+        con.modelstore("pt_model", 'torch', 'cpu', ptmodel, tag='v7.0')
 
     def test_dagrun_with_load(self):
         con = self.get_client()
