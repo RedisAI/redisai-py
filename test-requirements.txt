@@ -6,3 +6,4 @@ nose
 codecov
 numpy
 ml2rt
+deprecated
