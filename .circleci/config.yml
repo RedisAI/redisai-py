@@ -45,7 +45,8 @@ jobs:
   build:
     docker:
       # - image: debian:buster
-      - image: redislabs/redisai:edge-cpu
+      # - image: redislabs/redisai:edge-cpu
+      - image: redisfab/redisai:master-cpu-x64-bionic
     working_directory: ~/repo
     steps:
       - build-steps:
@@ -57,7 +58,8 @@ jobs:
   build_nightly:
     docker:
       # - image: circleci/python:3.6.9
-      - image: redislabs/redisai:edge-cpu
+      # - image: redislabs/redisai:edge-cpu
+      - image: redisfab/redisai:master-cpu-x64-bionic
     working_directory: ~/repo
     steps:
       - build-steps:
