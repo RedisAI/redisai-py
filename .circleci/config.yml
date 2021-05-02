@@ -9,7 +9,7 @@ commands:
             apt-get update -qq
             apt-get install -y git openssh-client curl ca-certificates make tar gzip
             (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            FORCE=1 ./deps/readies/bin/getpy3
+            FORCE=1 VENV=1 ./deps/readies/bin/getpy3
 
   build-steps:
     parameters:
