@@ -6,6 +6,8 @@ commands:
       - run:
           name: Setup automation
           command: |
+            apt-get update -qq
+            apt-get install -y git openssh-client curl ca-certificates make tar gzip
             (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
             FORCE=1 ./deps/readies/bin/getpy3
 
