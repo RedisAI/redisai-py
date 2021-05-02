@@ -1,84 +1,66 @@
+version: 2.1
 
-# Python CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-python/ for more details
-#
-version: 2
-jobs:
-  build:
-    docker:
-      - image: circleci/python:3.6.9
-      - image: redislabs/redisai:edge-cpu
-
-    working_directory: ~/repo
-
+commands:
+  setup-automation:
     steps:
-      - checkout
+      - run:
+          name: Setup automation
+          command: |
+            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+            FORCE=1 ./deps/readies/bin/getpy3
 
+  build-steps:
+    parameters:
+      coverage:
+        type: boolean
+        default: false 
+    steps: 
+      - checkout
+      - setup-automation   
       - restore_cache: # Download and cache dependencies
           keys:
-          - v1-dependencies-{{ checksum "test-requirements.txt" }}
+          - v2-dependencies-{{ checksum "test-requirements.txt" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
-
       - run:
           name: install dependencies
           command: |
-            virtualenv venv
+            python3 -m virtualenv venv
             . venv/bin/activate
-            pip install -r test-requirements.txt
-            
+            python3 -m pip install -r test-requirements.txt
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "test-requirements.txt" }}
-
+          key: v2-dependencies-{{ checksum "test-requirements.txt" }}
       - run:
           name: run tests
           command: |
             . venv/bin/activate
             nosetests --with-coverage -vsx test
             codecov
-            
+      
+jobs:
+  build:
+    docker:
+      # - image: debian:buster
+      - image: redislabs/redisai:edge-cpu
+    working_directory: ~/repo
+    steps:
+      - build-steps:
+          coverage: true
       - store_artifacts:
           path: test-reports
           destination: test-reports
 
   build_nightly:
     docker:
-      - image: circleci/python:3.6.9
+      # - image: circleci/python:3.6.9
       - image: redislabs/redisai:edge-cpu
-
     working_directory: ~/repo
-
     steps:
-      - checkout
+      - build-steps:
+          coverage: false
 
-      - restore_cache: # Download and cache dependencies
-          keys:
-          - v1-dependencies-{{ checksum "test-requirements.txt" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
-
-      - run:
-          name: install dependencies
-          command: |
-            virtualenv venv
-            . venv/bin/activate
-            pip install -r test-requirements.txt
-            
-      - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "test-requirements.txt" }}
-
-      - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            nosetests -vsx test  
-
-      # no need for store_artifacts on nightly builds 
 
 workflows:
   version: 2
