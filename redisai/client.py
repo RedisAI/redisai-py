@@ -4,6 +4,7 @@ import warnings
 
 from redis import StrictRedis
 import numpy as np
+from deprecated import deprecated
 
 from redisai import command_builder as builder
 from redisai.dag import Dag
@@ -96,7 +97,7 @@ class Client(StrictRedis):
         -------
         >>> con.tensorset('tensor', ...)
         'OK'
-        >>> con.modelset('model', ...)
+        >>> con.modelstore('model', ...)
         'OK'
         >>> dag = con.dag(load=['tensor'], persist=['output'])
         >>> dag.tensorset('another', ...)
@@ -136,18 +137,17 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.loadbackend(res)
 
-    def modelset(
-        self,
-        key: AnyStr,
-        backend: str,
-        device: str,
-        data: ByteString,
-        batch: int = None,
-        minbatch: int = None,
-        tag: AnyStr = None,
-        inputs: Union[AnyStr, List[AnyStr]] = None,
-        outputs: Union[AnyStr, List[AnyStr]] = None,
-    ) -> str:
+    def modelstore(self,
+                   key: AnyStr,
+                   backend: str,
+                   device: str,
+                   data: ByteString,
+                   batch: int = None,
+                   minbatch: int = None,
+                   minbatchtimeout: int = None,
+                   tag: AnyStr = None,
+                   inputs: Union[AnyStr, List[AnyStr]] = None,
+                   outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
         """
         Set the model on provided key.
 
@@ -166,6 +166,9 @@ class Client(StrictRedis):
             Number of batches for doing auto-batching
         minbatch : int
             Minimum number of samples required in a batch for model execution
+        minbatchtimeout : int
+            The max number of miliseconds for which the engine will not trigger an execution if the number of samples
+            is lower than minbatch (after minbatchtimeout is passed, the execution will start even if minbatch jas not reached)
         tag : AnyStr
             Any string that will be saved in RedisAI as tag for the model
         inputs : Union[AnyStr, List[AnyStr]]
@@ -177,6 +180,39 @@ class Client(StrictRedis):
         -------
         str
             'OK' if success, raise an exception otherwise
+
+        Example
+        -------
+        >>> # Torch model
+        >>> model_path = os.path.join('path/to/TorchScriptModel.pt')
+        >>> model = open(model_path, 'rb').read()
+        >>> con.modeltore("model", 'torch', 'cpu', model, tag='v1.0')
+        'OK'
+        >>> # Tensorflow model
+        >>> model_path = os.path.join('/path/to/tf_frozen_graph.pb')
+        >>> model = open(model_path, 'rb').read()
+        >>> con.modelstore('m', 'tf', 'cpu', model,
+        ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        'OK'
+        """
+        args = builder.modelstore(key, backend, device, data,
+                                batch, minbatch, minbatchtimeout, tag, inputs, outputs)
+        res = self.execute_command(*args)
+        return res if not self.enable_postprocess else processor.modelstore(res)
+
+    @deprecated(version='1.2.2', reason="Use modelstore instead")
+    def modelset(self,
+                 key: AnyStr,
+                 backend: str,
+                 device: str,
+                 data: ByteString,
+                 batch: int = None,
+                 minbatch: int = None,
+                 tag: AnyStr = None,
+                 inputs: Union[AnyStr, List[AnyStr]] = None,
+                 outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
+        """
+        Similar to modelstore (this is the deprecated version that will not be supported in future versions).
 
         Example
         -------
@@ -247,15 +283,14 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modeldel(res)
 
-    def modelrun(
-        self,
-        key: AnyStr,
-        inputs: Union[AnyStr, List[AnyStr]],
-        outputs: Union[AnyStr, List[AnyStr]],
-    ) -> str:
+    def modelexecute(self,
+                 key: AnyStr,
+                 inputs: Union[AnyStr, List[AnyStr]],
+                 outputs: Union[AnyStr, List[AnyStr]],
+                 timeout: int = None) -> str:
         """
         Run the model using input(s) which are already in the scope and are associated
-        to some keys. Modelrun also needs the output key name(s) to store the output
+        to some keys. Modelexecute also needs the output key name(s) to store the output
         from the model. The number of outputs from the model and the number of keys
         provided here must be same. Otherwise, RedisAI throws an error
 
@@ -265,10 +300,13 @@ class Client(StrictRedis):
             Model key to run
         inputs : Union[AnyStr, List[AnyStr]]
             Tensor(s) which is already saved in the RedisAI using a tensorset call. These
-            tensors will be used as the input for the modelrun
+            tensors will be used as the inputs for the modelexecute
         outputs : Union[AnyStr, List[AnyStr]]
-            keys on which the outputs to be saved. If those keys exist already, modelrun
+            keys on which the outputs to be saved. If those keys exist already, modelexecute
             will overwrite them with new values
+        timeout : int
+            The max number on milisecinds that may pass before the request is prossced
+            (meaning that the result will not be computed after that time and TIMEDOUT is returned in that case
 
         Returns
         -------
@@ -277,7 +315,31 @@ class Client(StrictRedis):
 
         Example
         -------
-        >>> con.modelset('m', 'tf', 'cpu', model_pb,
+        >>> con.modelstore('m', 'tf', 'cpu', model_pb,
+        ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
+        'OK'
+        >>> con.tensorset('a', (2, 3), dtype='float')
+        'OK'
+        >>> con.tensorset('b', (2, 3), dtype='float')
+        'OK'
+        >>> con.modelexecute('m', ['a', 'b'], ['c'])
+        'OK'
+        """
+        args = builder.modelexecute(key, inputs, outputs, timeout)
+        res = self.execute_command(*args)
+        return res if not self.enable_postprocess else processor.modelexecute(res)
+
+    @deprecated(version='1.2.2', reason="Use modelexecute instead")
+    def modelrun(self,
+                 key: AnyStr,
+                 inputs: Union[AnyStr, List[AnyStr]],
+                 outputs: Union[AnyStr, List[AnyStr]]) -> str:
+        """
+        Similar to modelexecute (this is the deprecated version that will not be supported in future versions).
+
+        Example
+        -------
+        >>> con.modelstore('m', 'tf', 'cpu', model_pb,
         ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         'OK'
         >>> con.tensorset('a', (2, 3), dtype='float')
