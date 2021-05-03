@@ -26,6 +26,10 @@ commands:
             . venv/bin/activate
             python3 -m pip install -r test-requirements.txt
       - run:
+          name: Run redis-server
+          command: redis-server --loadmodule /usr/lib/redis/modules/redisai.so
+          background: true
+      - run:
           name: run tests
           command: |
             . venv/bin/activate
