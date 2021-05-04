@@ -8,8 +8,8 @@ jobs:
   build:
     docker:
       - image: circleci/python:3.6.9
-      - image: redislabs/redisai:edge-cpu
-
+      - image: redislabs/redisai:latest-cpu-x64-bionic
+      
     working_directory: ~/repo
 
     steps:
