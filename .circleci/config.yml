@@ -8,7 +8,7 @@ jobs:
   build:
     docker:
       - image: circleci/python:3.6.9
-      - image: redislabs/redisai:edge-cpu
+      - image: redislabs/redisai:edge-cpu-bionic
 
     working_directory: ~/repo
 
@@ -24,10 +24,10 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            virtualenv venv
+            virtualenv --no-site-packages venv
             . venv/bin/activate
             pip install -r test-requirements.txt
-            
+
       - save_cache:
           paths:
             - ./venv
@@ -39,7 +39,7 @@ jobs:
             . venv/bin/activate
             nosetests --with-coverage -vsx test
             codecov
-            
+
       - store_artifacts:
           path: test-reports
           destination: test-reports
@@ -47,7 +47,7 @@ jobs:
   build_nightly:
     docker:
       - image: circleci/python:3.6.9
-      - image: redislabs/redisai:edge-cpu
+      - image: redislabs/redisai:edge-cpu-bionic
 
     working_directory: ~/repo
 
@@ -63,10 +63,10 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            virtualenv venv
+            virtualenv --no-site-packgaes venv
             . venv/bin/activate
             pip install -r test-requirements.txt
-            
+
       - save_cache:
           paths:
             - ./venv
@@ -76,9 +76,9 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            nosetests -vsx test  
+            nosetests -vsx test
 
-      # no need for store_artifacts on nightly builds 
+      # no need for store_artifacts on nightly builds
 
 workflows:
   version: 2
