@@ -45,7 +45,7 @@ def modelstore(
         args += ["MINBATCHTIMEOUT", minbatchtimeout]
 
     if backend.upper() == "TF":
-        if not (all((inputs, outputs))):
+        if not all((inputs, outputs)):
             raise ValueError(
                 "Require keyword arguments inputs and outputs for TF models"
             )

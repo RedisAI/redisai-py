@@ -168,8 +168,9 @@ class Client(StrictRedis):
         minbatch : int
             Minimum number of samples required in a batch for model execution
         minbatchtimeout : int
-            The max number of miliseconds for which the engine will not trigger an execution if the number of samples
-            is lower than minbatch (after minbatchtimeout is passed, the execution will start even if minbatch jas not reached)
+            The max number of miliseconds for which the engine will not trigger an execution
+            if the number of samples is lower than minbatch (after minbatchtimeout is passed,
+            the execution will start even if minbatch jas not reached)
         tag : AnyStr
             Any string that will be saved in RedisAI as tag for the model
         inputs : Union[AnyStr, List[AnyStr]]
@@ -225,7 +226,8 @@ class Client(StrictRedis):
         outputs: Union[AnyStr, List[AnyStr]] = None,
     ) -> str:
         """
-        Similar to modelstore (this is the deprecated version that will not be supported in future versions).
+        Similar to modelstore (this is the deprecated version that will not be
+        supported in future versions).
 
         Example
         -------
@@ -317,11 +319,12 @@ class Client(StrictRedis):
             Tensor(s) which is already saved in the RedisAI using a tensorset call. These
             tensors will be used as the inputs for the modelexecute
         outputs : Union[AnyStr, List[AnyStr]]
-            keys on which the outputs to be saved. If those keys exist already, modelexecute
-            will overwrite them with new values
+            keys on which the outputs to be saved. If those keys exist already,
+            modelexecute will overwrite them with new values
         timeout : int
             The max number on milisecinds that may pass before the request is prossced
-            (meaning that the result will not be computed after that time and TIMEDOUT is returned in that case
+            (meaning that the result will not be computed after that time and TIMEDOUT
+            is returned in that case
 
         Returns
         -------
@@ -352,7 +355,8 @@ class Client(StrictRedis):
         outputs: Union[AnyStr, List[AnyStr]],
     ) -> str:
         """
-        Similar to modelexecute (this is the deprecated version that will not be supported in future versions).
+        Similar to modelexecute (this is the deprecated version that will not be
+        supported in future versions).
 
         Example
         -------
