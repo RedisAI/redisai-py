@@ -63,7 +63,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            virtualenv --no-site-packgaes venv
+            virtualenv --no-site-packages venv
             . venv/bin/activate
             pip install -r test-requirements.txt
 
