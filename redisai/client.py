@@ -137,17 +137,19 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.loadbackend(res)
 
-    def modelstore(self,
-                   key: AnyStr,
-                   backend: str,
-                   device: str,
-                   data: ByteString,
-                   batch: int = None,
-                   minbatch: int = None,
-                   minbatchtimeout: int = None,
-                   tag: AnyStr = None,
-                   inputs: Union[AnyStr, List[AnyStr]] = None,
-                   outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
+    def modelstore(
+        self,
+        key: AnyStr,
+        backend: str,
+        device: str,
+        data: ByteString,
+        batch: int = None,
+        minbatch: int = None,
+        minbatchtimeout: int = None,
+        tag: AnyStr = None,
+        inputs: Union[AnyStr, List[AnyStr]] = None,
+        outputs: Union[AnyStr, List[AnyStr]] = None,
+    ) -> str:
         """
         Set the model on provided key.
 
@@ -195,22 +197,34 @@ class Client(StrictRedis):
         ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         'OK'
         """
-        args = builder.modelstore(key, backend, device, data,
-                                batch, minbatch, minbatchtimeout, tag, inputs, outputs)
+        args = builder.modelstore(
+            key,
+            backend,
+            device,
+            data,
+            batch,
+            minbatch,
+            minbatchtimeout,
+            tag,
+            inputs,
+            outputs,
+        )
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelstore(res)
 
-    @deprecated(version='1.2.2', reason="Use modelstore instead")
-    def modelset(self,
-                 key: AnyStr,
-                 backend: str,
-                 device: str,
-                 data: ByteString,
-                 batch: int = None,
-                 minbatch: int = None,
-                 tag: AnyStr = None,
-                 inputs: Union[AnyStr, List[AnyStr]] = None,
-                 outputs: Union[AnyStr, List[AnyStr]] = None) -> str:
+    @deprecated(version="1.2.2", reason="Use modelstore instead")
+    def modelset(
+        self,
+        key: AnyStr,
+        backend: str,
+        device: str,
+        data: ByteString,
+        batch: int = None,
+        minbatch: int = None,
+        tag: AnyStr = None,
+        inputs: Union[AnyStr, List[AnyStr]] = None,
+        outputs: Union[AnyStr, List[AnyStr]] = None,
+    ) -> str:
         """
         Similar to modelstore (this is the deprecated version that will not be supported in future versions).
 
@@ -283,11 +297,13 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modeldel(res)
 
-    def modelexecute(self,
-                 key: AnyStr,
-                 inputs: Union[AnyStr, List[AnyStr]],
-                 outputs: Union[AnyStr, List[AnyStr]],
-                 timeout: int = None) -> str:
+    def modelexecute(
+        self,
+        key: AnyStr,
+        inputs: Union[AnyStr, List[AnyStr]],
+        outputs: Union[AnyStr, List[AnyStr]],
+        timeout: int = None,
+    ) -> str:
         """
         Run the model using input(s) which are already in the scope and are associated
         to some keys. Modelexecute also needs the output key name(s) to store the output
@@ -329,11 +345,13 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelexecute(res)
 
-    @deprecated(version='1.2.2', reason="Use modelexecute instead")
-    def modelrun(self,
-                 key: AnyStr,
-                 inputs: Union[AnyStr, List[AnyStr]],
-                 outputs: Union[AnyStr, List[AnyStr]]) -> str:
+    @deprecated(version="1.2.2", reason="Use modelexecute instead")
+    def modelrun(
+        self,
+        key: AnyStr,
+        inputs: Union[AnyStr, List[AnyStr]],
+        outputs: Union[AnyStr, List[AnyStr]],
+    ) -> str:
         """
         Similar to modelexecute (this is the deprecated version that will not be supported in future versions).
 
