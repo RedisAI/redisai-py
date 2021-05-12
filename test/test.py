@@ -1,12 +1,13 @@
-from io import StringIO
-import sys
-from unittest import TestCase
-import numpy as np
 import os.path
-from redisai import Client
+import sys
+from io import StringIO
+from unittest import TestCase
+
+import numpy as np
 from ml2rt import load_model
 from redis.exceptions import ResponseError
 
+from redisai import Client
 
 DEBUG = False
 tf_graph = "graph.pb"
@@ -194,7 +195,8 @@ class ClientTestCase(RedisAITestBase):
                 tag="v1.0",
                 minbatch=2,
             )
-        self.assertEqual(str(e.exception), "Minbatch is not allowed without batch")
+        self.assertEqual(str(e.exception),
+                         "Minbatch is not allowed without batch")
         with self.assertRaises(ValueError) as e:
             con.modelstore(
                 "m",
@@ -280,7 +282,8 @@ class ClientTestCase(RedisAITestBase):
         )
         con.tensorset("a" + nonascii, (2, 3), dtype="float")
         con.tensorset("b", (2, 3), dtype="float")
-        con.modelexecute("m" + nonascii, ["a" + nonascii, "b"], ["c" + nonascii])
+        con.modelexecute(
+            "m" + nonascii, ["a" + nonascii, "b"], ["c" + nonascii])
         tensor = con.tensorget("c" + nonascii)
         self.assertTrue((np.allclose(tensor, [4.0, 9.0])))
 
@@ -324,7 +327,8 @@ class ClientTestCase(RedisAITestBase):
 
     def test_scripts(self):
         con = self.get_client()
-        self.assertRaises(ResponseError, con.scriptset, "ket", "cpu", "return 1")
+        self.assertRaises(ResponseError, con.scriptset,
+                          "ket", "cpu", "return 1")
         con.scriptset("ket", "cpu", script)
         con.tensorset("a", (2, 3), dtype="float")
         con.tensorset("b", (2, 3), dtype="float")
@@ -410,7 +414,8 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
         con = self.get_client()
-        con.modelstore("m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"])
+        con.modelstore("m", "tf", "cpu", model_pb,
+                       inputs=["a", "b"], outputs=["mul"])
         first_info = con.infoget("m")
         expected = {
             "key": "m",
@@ -432,7 +437,8 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(second_info["calls"], 2)  # 2 model runs
         con.inforeset("m")
         third_info = con.infoget("m")
-        self.assertEqual(first_info, third_info)  # before modelrun and after reset
+        # before modelrun and after reset
+        self.assertEqual(first_info, third_info)
 
     def test_model_scan(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)
@@ -480,7 +486,8 @@ class DagTestCase(RedisAITestBase):
         dag.modelrun("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
         result = dag.run()
-        expected = ["OK", "OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
+        expected = ["OK", "OK", np.array(
+            [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
         self.assertEqual(expected, result)
         self.assertRaises(ResponseError, con.tensorget, "b")
@@ -512,7 +519,8 @@ class DagTestCase(RedisAITestBase):
             .tensorget("output")
             .run()
         )
-        expected = ["OK", "OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
+        expected = ["OK", "OK", np.array(
+            [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
         self.assertEqual(expected, result)
 
@@ -574,12 +582,14 @@ class PipelineTest(RedisAITestBase):
         pipe = con.pipeline(transaction=False)
         pipe = pipe.tensorset("a", arr).set("native", 1)
         pipe = pipe.tensorget("a", as_numpy=False)
-        pipe = pipe.tensorget("a", as_numpy=True).tensorget("a", meta_only=True)
+        pipe = pipe.tensorget("a", as_numpy=True).tensorget(
+            "a", meta_only=True)
         result = pipe.execute()
         expected = [
             b"OK",
             True,
-            {"dtype": "FLOAT", "shape": [2, 2], "values": [2.0, 3.0, 2.0, 3.0]},
+            {"dtype": "FLOAT", "shape": [2, 2],
+                "values": [2.0, 3.0, 2.0, 3.0]},
             arr,
             {"dtype": "FLOAT", "shape": [2, 2]},
         ]
@@ -595,12 +605,14 @@ class PipelineTest(RedisAITestBase):
         pipe = con.pipeline(transaction=True)
         pipe = pipe.tensorset("a", arr).set("native", 1)
         pipe = pipe.tensorget("a", as_numpy=False)
-        pipe = pipe.tensorget("a", as_numpy=True).tensorget("a", meta_only=True)
+        pipe = pipe.tensorget("a", as_numpy=True).tensorget(
+            "a", meta_only=True)
         result = pipe.execute()
         expected = [
             b"OK",
             True,
-            {"dtype": "FLOAT", "shape": [2, 2], "values": [2.0, 3.0, 2.0, 3.0]},
+            {"dtype": "FLOAT", "shape": [2, 2],
+                "values": [2.0, 3.0, 2.0, 3.0]},
             arr,
             {"dtype": "FLOAT", "shape": [2, 2]},
         ]

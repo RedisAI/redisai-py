@@ -1,16 +1,15 @@
-from functools import wraps, partial
-from typing import Union, AnyStr, ByteString, List, Sequence, Any
 import warnings
+from functools import partial, wraps
+from typing import Any, AnyStr, ByteString, List, Sequence, Union
 
-from redis import StrictRedis
 import numpy as np
 from deprecated import deprecated
+from redis import StrictRedis
 
 from redisai import command_builder as builder
 from redisai.dag import Dag
 from redisai.pipeline import Pipeline
 from redisai.postprocessor import Processor
-
 
 processor = Processor()
 

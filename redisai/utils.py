@@ -1,6 +1,6 @@
-from typing import Union, ByteString, Sequence, List, AnyStr, Callable
-import numpy as np
+from typing import AnyStr, ByteString, Callable, List, Sequence, Union
 
+import numpy as np
 
 dtype_dict = {
     "float": "FLOAT",
@@ -26,7 +26,8 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     try:
         dtype = dtype_dict[str(tensor.dtype)]
     except KeyError:
-        raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
+        raise TypeError(
+            f"RedisAI doesn't support tensors of type {tensor.dtype}")
     shape = tensor.shape
     blob = bytes(tensor.data)
     return dtype, shape, blob
