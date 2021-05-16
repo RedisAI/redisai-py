@@ -1,5 +1,5 @@
-from functools import wraps, partial
-from typing import Union, AnyStr, ByteString, List, Sequence, Any
+from functools import wraps
+from typing import Union, AnyStr, ByteString, List, Sequence
 import warnings
 
 from redis import StrictRedis

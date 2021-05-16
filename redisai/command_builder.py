@@ -39,7 +39,7 @@ def modelset(
         args += ["INPUTS", *utils.listify(inputs)]
         args += ["OUTPUTS", *utils.listify(outputs)]
     chunk_size = 500 * 1024 * 1024
-    data_chunks = [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
+    data_chunks = [data[i: i + chunk_size] for i in range(0, len(data), chunk_size)]
     # TODO: need a test case for this
     args += ["BLOB", *data_chunks]
     return args
