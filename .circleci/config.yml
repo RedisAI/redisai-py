@@ -83,6 +83,9 @@ jobs:
           destination: test-reports
 
   nightly:
+    parameters:
+      python_version:
+        type: string
     docker:
       - image: circleci/python:<<parameters.python_version>>
       - image: redislabs/redisai:edge-cpu-bionic
@@ -114,14 +117,14 @@ workflows:
           <<: *on-any-branch
           <<: *python-versions
 
-#  nightly:
-#    triggers:
-#      - schedule:
-#          cron: "0 0 * * *"
-#          filters:
-#            branches:
-#              only:
-#                - master
-#    jobs:
-#      - nightly:
-#          <<: *python-versions
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - nightly:
+          <<: *python-versions
