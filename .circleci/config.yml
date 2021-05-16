@@ -1,97 +1,127 @@
+version: 2.1
 
-# Python CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-python/ for more details
-#
-version: 2
-jobs:
-  build:
-    docker:
-      - image: circleci/python:3.6.9
-      - image: redislabs/redisai:edge-cpu-bionic
+commands:
 
-    working_directory: ~/repo
-
+  abort_for_docs:
     steps:
-      - checkout
+      - run:
+          name: Avoid tests for docs
+          command: |
+            if [[ $CIRCLE_BRANCH == *docs ]]; then
+              echo "Identifies as documents PR, no testing required"
+              circleci step halt
+            fi
 
+  abort_for_noci:
+    steps:
+      - run:
+          name: Ignore CI for specific branches
+          command: |
+            if [[ $CIRCLE_BRANCH == *noci ]]; then
+              echo "Identifies as actively ignoring CI, no testing required."
+              circleci step halt
+            fi
+
+
+  early_return_for_forked_pull_requests:
+    description: >-
+      If this build is from a fork, stop executing the current job and return success.
+      This is useful to avoid steps that will fail due to missing credentials.
+    steps:
+      - run:
+          name: Early return if this build is from a forked PR
+          command: |
+            if [[ -n "$CIRCLE_PR_NUMBER" ]]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
+
+  build_and_test:
+    steps:
+
+      - checkout
       - restore_cache: # Download and cache dependencies
           keys:
-          - v1-dependencies-{{ checksum "test-requirements.txt" }}
+          - v1-dependencies-{{ checksum "pyproject.toml" }}
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
 
       - run:
-          name: install dependencies
+          name: install tox dependencies
           command: |
-            virtualenv --no-site-packages venv
-            . venv/bin/activate
-            pip install -r test-requirements.txt
+            pip install --user --quiet -r requirements.txt
+
+      - run:
+          name: build
+          command: |
+            poetry build --format sdist
+            poetry build --format wheel
+
+      - run:
+          name: run tests
+          command:
+            tox
 
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "test-requirements.txt" }}
+          key: v1-dependencies-{{ checksum "pyproject.toml" }}
 
-      - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            nosetests --with-coverage -vsx test
-            codecov
+jobs:
+  build:
+    parameters:
+      python_version:
+        type: string
+    docker:
+      - image: circleci/python:<<parameters.python_version>>
+      - image: redislabs/redisai:edge-cpu-bionic
 
+    steps:
+      - build_and_test
       - store_artifacts:
           path: test-reports
           destination: test-reports
 
-  build_nightly:
+  nightly:
     docker:
-      - image: circleci/python:3.6.9
+      - image: circleci/python:<<parameters.python_version>>
       - image: redislabs/redisai:edge-cpu-bionic
-
-    working_directory: ~/repo
-
     steps:
-      - checkout
+      - build_and_test
 
-      - restore_cache: # Download and cache dependencies
-          keys:
-          - v1-dependencies-{{ checksum "test-requirements.txt" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
+on-any-branch: &on-any-branch
+  filters:
+    branches:
+      only:
+        - /.*/
+    tags:
+      ignore: /.*/
 
-      - run:
-          name: install dependencies
-          command: |
-            virtualenv --no-site-packages venv
-            . venv/bin/activate
-            pip install -r test-requirements.txt
-
-      - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "test-requirements.txt" }}
-
-      - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            nosetests -vsx test
-
-      # no need for store_artifacts on nightly builds
+python-versions: &python-versions
+  matrix:
+    parameters:
+      python_version:
+        - "3.6.9"
+        - "3.7.9"
+        - "3.8.9"
+        - "3.9.4"
 
 workflows:
   version: 2
   commit:
     jobs:
-      - build
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - build_nightly
+      - build:
+          <<: *on-any-branch
+          <<: *python-versions
+
+#  nightly:
+#    triggers:
+#      - schedule:
+#          cron: "0 0 * * *"
+#          filters:
+#            branches:
+#              only:
+#                - master
+#    jobs:
+#      - nightly:
+#          <<: *python-versions
