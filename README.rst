@@ -18,13 +18,13 @@ redisai-py
         :target: https://codecov.io/gh/RedisAI/redisai-py
 
 .. image:: https://readthedocs.org/projects/redisai-py/badge/?version=latest
-        :target: https://redisai-py.readthedocs.io/en/latest/?badge=latest  
+        :target: https://redisai-py.readthedocs.io/en/latest/?badge=latest
 
 .. image:: https://img.shields.io/badge/Forum-RedisAI-blue
         :target: https://forum.redislabs.com/c/modules/redisai
 
 .. image:: https://img.shields.io/discord/697882427875393627?style=flat-square
-        :target: https://discord.gg/rTQm7UZ       
+        :target: https://discord.gg/rTQm7UZ
 
 redisai-py is the Python client for RedisAI. Checkout the
 `documentation <https://redisai-py.readthedocs.io/en/latest/>`_ for API details and examples
@@ -47,6 +47,17 @@ Installation
 
     $ pip install ml2rt
 
+Development
+-----------
+
+1. Create a virtualenv to manage your python dependencies, and ensure it's active.
+   ```virtualenv -v venv```
+2. Install [pypoetry](https://python-poetry.org/) to manage your dependencies.
+   ```pip install -r requirements.txt```
+3. Install dependencies.
+   ```poetry install```
+
+[tox](https://tox.readthedocs.io/en/latest/) runs all tests as its default target. Running *tox* by itself will run unit tests. Ensure you have a running redis, with the redisai client loaded.
 
 `RedisAI example repo <https://github.com/RedisAI/redisai-examples>`_ shows few examples
 made using redisai-py under `python_client` folder. Also, checkout

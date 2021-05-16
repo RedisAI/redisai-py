@@ -38,7 +38,6 @@ commands:
 
   build_and_test:
     steps:
-
       - checkout
       - restore_cache: # Download and cache dependencies
           keys:
@@ -58,6 +57,11 @@ commands:
             poetry build --format wheel
 
       - run:
+          name: lint
+          command: |
+            tox -e linters
+
+      - run:
           name: run tests
           command:
             tox
@@ -67,6 +71,17 @@ commands:
             - ./venv
           key: v1-dependencies-{{ checksum "pyproject.toml" }}
 
+  # build and push docker
+  dockerize:
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: build dockers
+          command: |
+            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
+            docker build -t redislabs/redisai-py:edge .
+            docker push
 jobs:
   build:
     parameters:
@@ -91,6 +106,7 @@ jobs:
       - image: redislabs/redisai:edge-cpu-bionic
     steps:
       - build_and_test
+      - dockerize
 
 on-any-branch: &on-any-branch
   filters:
@@ -117,14 +133,14 @@ workflows:
           <<: *on-any-branch
           <<: *python-versions
 
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - nightly:
-          <<: *python-versions
+#  nightly:
+#    triggers:
+#      - schedule:
+#          cron: "0 0 * * *"
+#          filters:
+#            branches:
+#              only:
+#                - master
+#    jobs:
+#      - nightly:
+#          <<: *python-versions

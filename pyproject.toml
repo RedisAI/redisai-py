@@ -35,6 +35,10 @@ flake8 = "^3.9.2"
 rmtest = "^0.7.0"
 nose = "^1.3.7"
 ml2rt = "^0.2.0"
+tox = ">=3.23.1"
+tox-poetry = "^0.3.0"
+bandit = "^1.7.0"
+pylint = "^2.8.2"
 
 [tool.poetry.urls]
 url = "https://redisai.io"
