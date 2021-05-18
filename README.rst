@@ -57,7 +57,7 @@ Development
 3. Install dependencies.
    ```poetry install```
 
-[tox](https://tox.readthedocs.io/en/latest/) runs all tests as its default target. Running *tox* by itself will run unit tests. Ensure you have a running redis, with the redisai client loaded.
+[tox](https://tox.readthedocs.io/en/latest/) runs all tests as its default target. Running *tox* by itself will run unit tests. Ensure you have a running redis, with the module loaded.
 
 `RedisAI example repo <https://github.com/RedisAI/redisai-examples>`_ shows few examples
 made using redisai-py under `python_client` folder. Also, checkout
