@@ -53,7 +53,7 @@ Development
 1. Create a virtualenv to manage your python dependencies, and ensure it's active.
    ```virtualenv -v venv```
 2. Install [pypoetry](https://python-poetry.org/) to manage your dependencies.
-   ```pip install -r requirements.txt```
+   ```pip install --user poetry```
 3. Install dependencies.
    ```poetry install```
 

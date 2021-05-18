@@ -46,9 +46,9 @@ commands:
           - v1-dependencies-
 
       - run:
-          name: install tox dependencies
+          name: install poetry
           command: |
-            pip install --user --quiet -r requirements.txt
+            pip install --user --quiet poetry
 
       - run:
           name: build
@@ -69,19 +69,9 @@ commands:
       - save_cache:
           paths:
             - ./venv
+            - ~/.cache/pip
           key: v1-dependencies-{{ checksum "pyproject.toml" }}
 
-  # build and push docker
-  dockerize:
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run:
-          name: build dockers
-          command: |
-            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            docker build -t redislabs/redisai-py:edge .
-            docker push
 jobs:
   build:
     parameters:
@@ -132,15 +122,3 @@ workflows:
       - build:
           <<: *on-any-branch
           <<: *python-versions
-
-#  nightly:
-#    triggers:
-#      - schedule:
-#          cron: "0 0 * * *"
-#          filters:
-#            branches:
-#              only:
-#                - master
-#    jobs:
-#      - nightly:
-#          <<: *python-versions
