@@ -46,9 +46,9 @@ commands:
           - v1-dependencies-
 
       - run:
-          name: install poetry
+          name: install poetry and tox
           command: |
-            pip install --user --quiet poetry
+            pip install --user --quiet poetry tox
 
       - run:
           name: build
