@@ -532,6 +532,55 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptrun(res)
 
+    def scriptexecute(
+        self,
+        key: AnyStr,
+        function: AnyStr,
+        keys: Union[AnyStr, Sequence[AnyStr]],
+        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
+        list_inputs: Sequence[Sequence[AnyStr]] = None,
+        outputs: Union[AnyStr, Sequence[AnyStr]] = None,
+        timeout: int = None,
+    ) -> str:
+        """
+        Run an already set script. Similar to modelrun
+
+        Parameters
+        ----------
+        key : AnyStr
+            Script key
+        function : AnyStr
+            Name of the function in the ``script``
+        keys : Union[AnyStr, Sequence[AnyStr]]
+            Either a squence of key names that the script will access before, during and
+            after its execution, or a tag which all those keys share.
+        inputs : Union[AnyStr, List[AnyStr]]
+            Tensor(s) which is already saved in the RedisAI using a tensorset call. These
+            tensors will be used as the input for the modelrun
+        list_inputs : Sequence[Sequence[AnyStr]]
+            list of inputs.
+        outputs : Union[AnyStr, List[AnyStr]]
+            keys on which the outputs to be saved. If those keys exist already, modelrun
+            will overwrite them with new values
+        timeout : int
+            The max number on milisecinds that may pass before the request is prossced
+            (meaning that the result will not be computed after that time and TIMEDOUT
+            is returned in that case)
+
+        Returns
+        -------
+        str
+            'OK' if success, raise an exception otherwise
+
+        Example
+        -------
+        >>> con.scriptexecute('ket', 'bar', keys=['a', 'b', 'c'], inputs=['a', 'b'], outputs=['c'])
+        'OK'
+        """
+        args = builder.scriptexecute(key, function, keys, inputs, list_inputs, outputs, timeout)
+        res = self.execute_command(*args)
+        return res if not self.enable_postprocess else processor.scriptrun(res)
+
     def scriptscan(self) -> List[List[AnyStr]]:
         """
         Returns the list of all the script in the RedisAI server. Scriptscan API is

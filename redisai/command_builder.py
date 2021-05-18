@@ -153,6 +153,35 @@ def scriptrun(
     )
     return args
 
+def scriptexecute(
+    name: AnyStr,
+    function: AnyStr,
+    keys: Union[AnyStr, Sequence[AnyStr]],
+    inputs: Union[AnyStr, Sequence[AnyStr]],
+    list_inputs: Sequence[Sequence[AnyStr]],
+    outputs: Union[AnyStr, Sequence[AnyStr]],
+    timeout: int,
+) -> Sequence:
+    args = [
+        "AI.SCRIPTEXECUTE",
+        name,
+        function,
+        "KEYS",
+        len(utils.listify(keys)),
+        *utils.listify(keys),
+    ]
+
+    if inputs is not None:
+        args += ["INPUTS", len(utils.listify(inputs)), *utils.listify(inputs)]
+    if list_inputs is not None:
+        for li in list_inputs:
+            args += ["LIST_INPUTS", len(li), *li]
+    if outputs is not None:
+        args += ["OUTPUTS", len(utils.listify(outputs)), *utils.listify(outputs)]
+    if timeout is not None:
+        args += ["TIMEOUT", timeout]
+
+    return args
 
 def scriptscan() -> Sequence:
     return ("AI._SCRIPTSCAN",)
