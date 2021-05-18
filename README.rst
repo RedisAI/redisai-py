@@ -26,6 +26,8 @@ redisai-py
 .. image:: https://img.shields.io/discord/697882427875393627?style=flat-square
         :target: https://discord.gg/rTQm7UZ
 
+.. image:: https://snyk.io/test/github/RedisAI/redisai-py/badge.svg?targetFile=pyproject.toml)](https://snyk.io/test/github/RedisAI/redisai-py?targetFile=pyproject.toml
+
 redisai-py is the Python client for RedisAI. Checkout the
 `documentation <https://redisai-py.readthedocs.io/en/latest/>`_ for API details and examples
 
