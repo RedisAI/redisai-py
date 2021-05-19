@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-from setuptools import find_packages, setup
+from setuptools import setup, find_packages
+
 
 with open("README.rst") as f:
     long_description = f.read()
 
 setup(
     name="redisai",
-    version="1.2.0",
+    version="1.0.2",
     description="RedisAI Python Client",
     long_description=long_description,
     long_description_content_type="text/x-rst",
