@@ -64,7 +64,7 @@ def modelstore(
             "Inputs and outputs keywords should not be specified for this backend"
         )
     chunk_size = 500 * 1024 * 1024  # TODO: this should be configurable.
-    data_chunks = [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
+    data_chunks = [data[i: i + chunk_size] for i in range(0, len(data), chunk_size)]
     # TODO: need a test case for this
     args += ["BLOB", *data_chunks]
     return args
