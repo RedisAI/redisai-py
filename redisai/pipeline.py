@@ -1,13 +1,12 @@
 import warnings
 from functools import partial
-from typing import AnyStr, Union, Sequence
+from typing import AnyStr, Sequence, Union
 
 import numpy as np
+import redis
 
 from redisai import command_builder as builder
-import redis
 from redisai.postprocessor import Processor
-
 
 processor = Processor()
 
