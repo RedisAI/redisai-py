@@ -51,10 +51,9 @@ commands:
             pip install --user --quiet -r .circleci/circle_requirements.txt
 
       - run:
-          name: build
+          name: build sdist and wheels
           command: |
-            poetry build --format sdist
-            poetry build --format wheel
+            poetry build
 
       - run:
           name: lint
