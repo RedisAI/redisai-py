@@ -6,7 +6,7 @@ with open("README.rst") as f:
 
 setup(
     name="redisai",
-    version="1.0.2",
+    version="1.2.0",
     description="RedisAI Python Client",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -14,7 +14,7 @@ setup(
     author="RedisLabs",
     author_email="oss@redislabs.com",
     packages=find_packages(),
-    install_requires=["redis", "hiredis", "numpy"],
+    install_requires=["redis", "hiredis", "numpy", "deprecated"],
     python_requires=">=3.6",
     classifiers=[
         "Development Status :: 4 - Beta",

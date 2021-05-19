@@ -162,6 +162,18 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, "graph.pb")
         model_pb = load_model(model_path)
         con = self.get_client()
+
+        with self.assertRaises(ValueError) as e:
+            con.modelstore(
+                None,
+                "TF",
+                "CPU",
+                model_pb,
+                inputs=["a", "b"],
+                outputs=["mul"]
+            )
+        self.assertEqual(str(e.exception), "Model name was not given")
+
         with self.assertRaises(ValueError) as e:
             con.modelstore(
                 "m",
@@ -303,6 +315,15 @@ class ClientTestCase(RedisAITestBase):
         con.modelstore(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs="mul", tag="v1.0"
         )
+
+        # Required arguments ar None
+        with self.assertRaises(ValueError) as e:
+            con.modelexecute(
+                "m",
+                inputs=None,
+                outputs=None
+            )
+        self.assertEqual(str(e.exception), "Missing required arguments for model execute command")
 
         # wrong model
         with self.assertRaises(ResponseError) as e:

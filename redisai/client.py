@@ -212,7 +212,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelstore(res)
 
-    @deprecated(version="1.2.2", reason="Use modelstore instead")
+    @deprecated(version="1.2.0", reason="Use modelstore instead")
     def modelset(
         self,
         key: AnyStr,
@@ -226,8 +226,34 @@ class Client(StrictRedis):
         outputs: Union[AnyStr, List[AnyStr]] = None,
     ) -> str:
         """
-        Similar to modelstore (this is the deprecated version that will not be
-        supported in future versions).
+        Set the model on provided key.
+
+        Parameters
+        ----------
+        key : AnyStr
+            Key name
+        backend : str
+            Backend name. Allowed backends are TF, TORCH, TFLITE, ONNX
+        device : str
+            Device name. Allowed devices are CPU and GPU. If multiple GPUs are available,
+            it can be specified using the format GPU:<gpu number>. For example: GPU:0
+        data : bytes
+            Model graph read as bytes string
+        batch : int
+            Number of batches for doing auto-batching
+        minbatch : int
+            Minimum number of samples required in a batch for model execution
+        tag : AnyStr
+            Any string that will be saved in RedisAI as tag for the model
+        inputs : Union[AnyStr, List[AnyStr]]
+            Input node(s) in the graph. Required only Tensorflow graphs
+        outputs : Union[AnyStr, List[AnyStr]]
+            Output node(s) in the graph Required only for Tensorflow graphs
+
+        Returns
+        -------
+        str
+            'OK' if success, raise an exception otherwise
 
         Example
         -------
@@ -347,7 +373,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelexecute(res)
 
-    @deprecated(version="1.2.2", reason="Use modelexecute instead")
+    @deprecated(version="1.2.0", reason="Use modelexecute instead")
     def modelrun(
         self,
         key: AnyStr,
@@ -355,8 +381,26 @@ class Client(StrictRedis):
         outputs: Union[AnyStr, List[AnyStr]],
     ) -> str:
         """
-        Similar to modelexecute (this is the deprecated version that will not be
-        supported in future versions).
+        Run the model using input(s) which are already in the scope and are associated
+        to some keys. Modelrun also needs the output key name(s) to store the output
+        from the model. The number of outputs from the model and the number of keys
+        provided here must be same. Otherwise, RedisAI throws an error
+
+        Parameters
+        ----------
+        key : str
+            Model key to run
+        inputs : Union[AnyStr, List[AnyStr]]
+            Tensor(s) which is already saved in the RedisAI using a tensorset call. These
+            tensors will be used as the input for the modelrun
+        outputs : Union[AnyStr, List[AnyStr]]
+            keys on which the outputs to be saved. If those keys exist already, modelrun
+            will overwrite them with new values
+
+        Returns
+        -------
+        str
+            'OK' if success, raise an exception otherwise
 
         Example
         -------
