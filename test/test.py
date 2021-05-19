@@ -153,7 +153,7 @@ class ClientTestCase(RedisAITestBase):
                 "device": "cpu",
                 "inputs": ["a", "b"],
                 "minbatchsize": 0,
-                "minbatchtimeout": 0
+                "minbatchtimeout": 0,
                 "outputs": ["mul"],
                 "tag": "v1.0",
             },
