@@ -46,9 +46,9 @@ commands:
           - v1-dependencies-
 
       - run:
-          name: install poetry and tox
+          name: install tox dependencies
           command: |
-            pip install --user --quiet poetry tox
+            pip install --user --quiet -r .circleci/circle_requirements.txt
 
       - run:
           name: build
@@ -64,11 +64,11 @@ commands:
       - run:
           name: run tests
           command:
-            tox
+            tox -e nosetests
 
       - save_cache:
           paths:
-            - ./venv
+            - ./.tox
             - ~/.cache/pip
           key: v1-dependencies-{{ checksum "pyproject.toml" }}
 
