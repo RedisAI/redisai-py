@@ -63,8 +63,10 @@ class Processor:
 decoder = staticmethod(decoder)
 decoding_functions = (
     "loadbackend",
+    "modelstore",
     "modelset",
     "modeldel",
+    "modelexecute",
     "modelrun",
     "tensorset",
     "scriptset",

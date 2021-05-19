@@ -27,6 +27,8 @@ python = "^3.6"
 redis = ">=2.10"
 hiredis = ">=0.20"
 numpy = ">=1.19.5"
+six = ">=1.10.0"
+Deprecated = "^1.2.12"
 
 [tool.poetry.dev-dependencies]
 codecov = "^2.1.11"
