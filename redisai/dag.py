@@ -11,7 +11,7 @@ processor = Processor()
 
 
 class Dag:
-    def __init__(self, load, persist, executor, readonly=False, postprocess=True):
+    def __init__(self, load, persist, executor, readonly=False):
         self.result_processors = []
         self.enable_postprocess = True
         if readonly:

@@ -65,8 +65,8 @@ class Client(StrictRedis):
             self.enable_postprocess,
             self.connection_pool,
             self.response_callbacks,
-            transaction=True,
-            shard_hint=None,
+            transaction=transaction,
+            shard_hint=shard_hint,
         )
 
     def dag(
