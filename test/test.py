@@ -30,6 +30,12 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/testdata"
 script = r"""
 def bar(a, b):
     return a + b
+    
+def bar_variadic(a, args : List[Tensor]):
+    return args[0] + args[1]
+    
+def bar_two_lists(a: List[Tensor], b:List[Tensor]):
+    return a[0] + b[0]
 """
 
 
@@ -348,7 +354,7 @@ class ClientTestCase(RedisAITestBase):
         con.modeldel("m")
         self.assertRaises(ResponseError, con.modelget, "m")
 
-    def test_scripts(self):
+    def test_scripts_run(self):
         con = self.get_client()
         self.assertRaises(ResponseError, con.scriptset,
                           "ket", "cpu", "return 1")
@@ -370,6 +376,175 @@ class ClientTestCase(RedisAITestBase):
         self.assertNotIn("source", script_det)
         con.scriptdel("ket")
         self.assertRaises(ResponseError, con.scriptget, "ket")
+
+    def test_scripts_execute_basic(self):
+        con = self.get_client()
+        self.assertRaises(ResponseError, con.scriptset, "ket", "cpu", "return 1")
+        con.scriptset("ket", "cpu", script)
+        con.tensorset("a", (2, 3), dtype="float")
+        con.tensorset("b", (2, 3), dtype="float")
+        # try with bad arguments:
+        self.assertRaises(
+            ResponseError, con.scriptexecute, "ket", "bar", keys=["a", "c"], inputs=["a"], outputs=["c"]
+        )
+        con.scriptexecute("ket", "bar", keys=["a", "b", "c"], inputs=["a", "b"], outputs=["c"])
+        tensor = con.tensorget("c", as_numpy=False)
+        self.assertEqual([4, 6], tensor["values"])
+        script_det = con.scriptget("ket")
+        self.assertTrue(script_det["device"] == "cpu")
+        self.assertTrue(script_det["source"] == script)
+        script_det = con.scriptget("ket", meta_only=True)
+        self.assertTrue(script_det["device"] == "cpu")
+        self.assertNotIn("source", script_det)
+        con.scriptdel("ket")
+        self.assertRaises(ResponseError, con.scriptget, "ket")
+
+    def test_scripts_execute_advanced(self):
+        con = self.get_client()
+        con.scriptset("myscript{1}", "cpu", script, "version1")
+        con.tensorset("a{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+
+        for _ in range(0, 100):
+            con.scriptexecute("myscript{1}", "bar", keys=["{1}"], inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+
+        info = con.infoget('myscript{1}')
+        self.assertEqual(info['key'], 'myscript{1}')
+        self.assertEqual(info['type'], 'SCRIPT')
+        self.assertEqual(info['backend'], 'TORCH')
+        self.assertEqual(info['tag'], 'version1')
+        self.assertTrue(info['duration'] > 0)
+        self.assertEqual(info['samples'], -1)
+        self.assertEqual(info['calls'], 100)
+        self.assertEqual(info['errors'], 0)
+
+        values = con.tensorget("c{1}", as_numpy=False)['values']
+        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
+
+    def test_scripts_execute_list_input(self):
+        con = self.get_client()
+        con.scriptset("myscript{$}", "cpu", script, "version1")
+        con.tensorset("a{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b1{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b2{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+
+        for _ in range(0, 100):
+            con.scriptexecute("myscript{$}", 'bar_variadic',
+                              keys=["{$}"],
+                              inputs=["a{$}"],
+                              list_inputs=[["b1{$}", "b2{$}"]],
+                              outputs=["c{$}"])
+
+        info = con.infoget('myscript{$}')
+
+        self.assertEqual(info['key'], 'myscript{$}')
+        self.assertEqual(info['type'], 'SCRIPT')
+        self.assertEqual(info['backend'], 'TORCH')
+        self.assertEqual(info['tag'], 'version1')
+        self.assertTrue(info['duration'] > 0)
+        self.assertEqual(info['samples'], -1)
+        self.assertEqual(info['calls'], 100)
+        self.assertEqual(info['errors'], 0)
+
+        values = con.tensorget("c{$}", as_numpy=False)['values']
+        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
+
+    def test_scripts_execute_multiple_list_input(self):
+        con = self.get_client()
+        con.scriptset("myscript{$}", "cpu", script, "version1")
+        con.tensorset("a{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+
+        for _ in range(0, 100):
+            con.scriptexecute('myscript{$}', 'bar_two_lists',
+                              keys=["{$}"],
+                              list_inputs=[["a{$}"], ["b{$}"]],
+                              outputs=["c{$}"])
+
+        info = con.infoget('myscript{$}')
+
+        self.assertEqual(info['key'], 'myscript{$}')
+        self.assertEqual(info['type'], 'SCRIPT')
+        self.assertEqual(info['backend'], 'TORCH')
+        self.assertEqual(info['tag'], 'version1')
+        self.assertTrue(info['duration'] > 0)
+        self.assertEqual(info['samples'], -1)
+        self.assertEqual(info['calls'], 100)
+        self.assertEqual(info['errors'], 0)
+
+        values = con.tensorget('c{$}', as_numpy=False)['values']
+        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
+
+    def test_scripts_execute_errors(self):
+        con = self.get_client()
+        con.scriptset("ket{1}", "cpu", script, tag="version1")
+        con.tensorset("a{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+
+        con.delete("EMPTY{1}")
+        # ERR no script at key from SCRIPTGET
+        self.assertRaises(ResponseError, con.scriptget, "EMPTY{1}")
+
+        con.set('NOT_SCRIPT{1}', 'BAR')
+        # ERR wrong type from SCRIPTGET
+        self.assertRaises(ResponseError, con.scriptget, 'NOT_SCRIPT{1}')
+
+        con.delete('EMPTY{1}')
+        # ERR no script at key from SCRIPTEXECUTE
+        self.assertRaises(ResponseError, con.scriptexecute, 'EMPTY{1}', 'bar',
+                          keys=['{1}'], inputs=['b{1}'], outputs=['c{1}'])
+
+        con.set('NOT_SCRIPT{1}', 'BAR')
+        # ERR wrong type from SCRIPTEXECUTE
+        self.assertRaises(ResponseError, con.scriptexecute, 'NOT_SCRIPT{1}', 'bar',
+                          keys=['{1}'], inputs=['b{1}'], outputs=['c{1}'])
+
+        con.delete('EMPTY{1}')
+        # ERR Input key is empty
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{1}', 'bar',
+                          keys=['{1}'], inputs=['EMPTY{1}', 'b{1}'], outputs=['c{1}'])
+
+        con.set('NOT_TENSOR{1}', 'BAR')
+        # ERR Input key not tensor
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{1}', 'bar',
+                          keys=['{1}'], inputs=['NOT_TENSOR{1}', 'b{1}'], outputs=['c{1}'])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{1}', 'bar',
+                          keys=['{1}'], inputs=['b{1}'], outputs=['c{1}'])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{1}', 'bar', keys=['{1}'], inputs=['b{1}'], outputs=[])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{1}', 'bar', keys=['{1}'], inputs=[], outputs=[])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{1}', 'bar', keys=[], inputs=[], outputs=[])
+
+    def test_scripts_execute_variadic_errors(self):
+        con = self.get_client()
+        con.scriptset("ket{$}", "cpu", script, tag="version1")
+        con.tensorset("a{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+
+        con.delete('EMPTY{$}')
+        # ERR Variadic input key is empty
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{$}', 'bar_variadic',
+                          keys=['{$}'], inputs=['a{$}'], list_inputs=[['EMPTY{$}', 'b{$}']], outputs=['c{$}'])
+
+        con.set('NOT_TENSOR{$}', 'BAR')
+        # ERR Variadic input key not tensor
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{$}', 'bar_variadic',
+                          keys=['{$}'], inputs=['a{$}'], list_inputs=[['NOT_TENSOR{$}', 'b{$}']], outputs=['c{$}'])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{$}', 'bar_variadic',
+                          keys=['{$}'], inputs=['b{$}', '${$}'], outputs=['c{$}'])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{$}', 'bar_variadic',
+                          keys=['{$}'], inputs=['b{$}'], list_inputs=[[]], outputs=[])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{$}', 'bar_variadic',
+                          keys=['{$}'], inputs=[], list_inputs=[[]], outputs=[])
+
+        self.assertRaises(ResponseError, con.scriptexecute, 'ket{$}', 'bar_variadic',
+                          keys=['{$}'], list_inputs=[['a{$}'], ['b{$}']], outputs=[])
 
     def test_run_onnxml_model(self):
         mlmodel_path = os.path.join(MODEL_DIR, "boston.onnx")
