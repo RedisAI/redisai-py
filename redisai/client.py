@@ -622,6 +622,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptdel(res)
 
+    @deprecated(version="1.2.0", reason="Use scriptexecute instead")
     def scriptrun(
         self,
         key: AnyStr,
@@ -642,7 +643,7 @@ class Client(StrictRedis):
             Tensor(s) which is already saved in the RedisAI using a tensorset call. These
             tensors will be used as the input for the modelrun
         outputs : Union[AnyStr, List[AnyStr]]
-            keys on which the outputs to be saved. If those keys exist already, modelrun
+            keys on which the outputs to be saved. If those keys exist already, scriptrun
             will overwrite them with new values
 
         Returns
@@ -662,37 +663,38 @@ class Client(StrictRedis):
     def scriptexecute(
         self,
         key: AnyStr,
-        function: AnyStr,
+        function: str,
         keys: Union[AnyStr, Sequence[AnyStr]],
-        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        list_inputs: Sequence[Sequence[AnyStr]] = None,
+        inputs: Union[AnyStr, Sequence[Union[AnyStr, Sequence[AnyStr]]]] = None,
         outputs: Union[AnyStr, Sequence[AnyStr]] = None,
         timeout: int = None,
     ) -> str:
         """
-        Run an already set script. Similar to modelrun
+        Run an already set script. Similar to modelexecute
 
         Parameters
         ----------
         key : AnyStr
             Script key
-        function : AnyStr
+        function : str
             Name of the function in the ``script``
         keys : Union[AnyStr, Sequence[AnyStr]]
             Either a squence of key names that the script will access before, during and
             after its execution, or a tag which all those keys share.
-        inputs : Union[AnyStr, List[AnyStr]]
-            Tensor(s) which is already saved in the RedisAI using a tensorset call. These
-            tensors will be used as the input for the modelrun
-        list_inputs : Sequence[Sequence[AnyStr]]
-            list of inputs.
+        inputs : Union[AnyStr, Sequence[Union[AnyStr, Sequence[AnyStr]]]]
+            The inputs can be tensor key name, string , int or float.
+            These inputs will be used as the input for the scriptexecute function.
+            The order of the input should be aligned with the order of their respected
+            parameter at the function signature.
+            When one of the elements in the inputs list is a list (or a tuple), that element
+            will be treated as LIST_INPUTS in the command executaion.
         outputs : Union[AnyStr, List[AnyStr]]
-            keys on which the outputs to be saved. If those keys exist already, modelrun
-            will overwrite them with new values
+            keys on which the outputs to be saved. If those keys exist already, scriptexecute
+            will overwrite them with new values.
         timeout : int
             The max number on milisecinds that may pass before the request is prossced
             (meaning that the result will not be computed after that time and TIMEDOUT
-            is returned in that case)
+            is returned in that case).
 
         Returns
         -------
@@ -703,10 +705,15 @@ class Client(StrictRedis):
         -------
         >>> con.scriptexecute('ket', 'bar', keys=['a', 'b', 'c'], inputs=['a', 'b'], outputs=['c'])
         'OK'
+        >>> con.scriptexecute('myscript{tag}', 'addn',
+        >>>                   keys=['{tag}'],
+        >>>                   inputs=['mytensor1{tag}', ['mytensor2{tag}', 'mytensor3{tag}']],
+        >>>                   outputs=['result{tag}'])
+        'OK'
         """
-        args = builder.scriptexecute(key, function, keys, inputs, list_inputs, outputs, timeout)
+        args = builder.scriptexecute(key, function, keys, inputs, outputs, timeout)
         res = self.execute_command(*args)
-        return res if not self.enable_postprocess else processor.scriptrun(res)
+        return res if not self.enable_postprocess else processor.scriptexecute(res)
 
     def scriptscan(self) -> List[List[AnyStr]]:
         """

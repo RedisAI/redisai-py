@@ -228,10 +228,12 @@ def scriptdel(name: AnyStr) -> Sequence:
 
 def scriptrun(
     name: AnyStr,
-    function: AnyStr,
+    function: str,
     inputs: Union[AnyStr, Sequence[AnyStr]],
     outputs: Union[AnyStr, Sequence[AnyStr]],
 ) -> Sequence:
+    if name is None or function is None:
+        raise ValueError("Missing required arguments for script run command")
     args = (
         "AI.SCRIPTRUN",
         name,
@@ -245,13 +247,14 @@ def scriptrun(
 
 def scriptexecute(
     name: AnyStr,
-    function: AnyStr,
+    function: str,
     keys: Union[AnyStr, Sequence[AnyStr]],
-    inputs: Union[AnyStr, Sequence[AnyStr]],
-    list_inputs: Sequence[Sequence[AnyStr]],
+    inputs: Union[AnyStr, Sequence[Union[AnyStr, Sequence[AnyStr]]]],
     outputs: Union[AnyStr, Sequence[AnyStr]],
     timeout: int,
 ) -> Sequence:
+    if name is None or function is None or keys is None:
+        raise ValueError("Missing required arguments for script execute command")
     args = [
         "AI.SCRIPTEXECUTE",
         name,
@@ -262,10 +265,20 @@ def scriptexecute(
     ]
 
     if inputs is not None:
-        args += ["INPUTS", len(utils.listify(inputs)), *utils.listify(inputs)]
-    if list_inputs is not None:
-        for li in list_inputs:
-            args += ["LIST_INPUTS", len(li), *li]
+        temp_inputs = []
+        if not isinstance(inputs, (list, tuple)):
+            args += ["INPUTS", 1, inputs]
+        else:
+            for elem in inputs:
+                if isinstance(elem, (list, tuple)):
+                    if temp_inputs:
+                        args += ["INPUTS", len(temp_inputs), *temp_inputs]
+                        temp_inputs = []
+                    args += ["LIST_INPUTS", len(utils.listify(elem)), *utils.listify(elem)]
+                else:
+                    temp_inputs.append(elem)
+            if temp_inputs:
+                args += ["INPUTS", len(temp_inputs), *temp_inputs]
     if outputs is not None:
         args += ["OUTPUTS", len(utils.listify(outputs)), *utils.listify(outputs)]
     if timeout is not None:

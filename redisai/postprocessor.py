@@ -70,7 +70,7 @@ decoding_functions = (
     "scriptset",
     "scriptdel",
     "scriptrun",
-    "scriptexecute"
+    "scriptexecute",
     "inforeset",
 )
 for fn in decoding_functions:
