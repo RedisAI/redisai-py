@@ -12,7 +12,7 @@ processor = Processor()
 class Dag:
     def __init__(self, load, persist, executor, readonly=False, postprocess=True):
         self.result_processors = []
-        self.enable_postprocess = True
+        self.enable_postprocess = postprocess
         if readonly:
             if persist:
                 raise RuntimeError(
