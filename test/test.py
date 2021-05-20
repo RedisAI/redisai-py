@@ -684,6 +684,15 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(b.dtype, np.float32)
         self.assertEqual(len(result), 3)
 
+    def test_dagrun_with_keys(self):
+        # Ask about better test
+        con = self.get_client()
+        dag = con.dag(keys=["{1}"])
+        dag.tensorset("tensor1", [5, 10], shape=(1, 2), dtype="float")
+        dag.tensorset("tensor2", [5, 10], shape=(1, 2), dtype="float")
+        result = dag.run()
+        self.assertEqual(result, ['OK', 'OK'])
+
     def test_dagrun_calling_on_return(self):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
@@ -706,7 +715,7 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(ResponseError):
             dag.tensorget("wrongkey").run()
 
-        dag = con.dag()
+        dag = con.dag(keys=["a", "b"])
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelrun("pt_model", ["a", "b"], ["output"])

@@ -10,7 +10,7 @@ processor = Processor()
 
 
 class Dag:
-    def __init__(self, load, persist, executor, readonly=False, postprocess=True):
+    def __init__(self, load, persist, keys, timeout, executor, readonly=False, postprocess=True):
         self.result_processors = []
         self.enable_postprocess = True
         if readonly:
@@ -19,21 +19,28 @@ class Dag:
                     "READONLY requests cannot write (duh!) and should not "
                     "have PERSISTing values"
                 )
-            self.commands = ["AI.DAGRUN_RO"]
+            self.commands = ["AI.DAGEXECUTE_RO"]
         else:
-            self.commands = ["AI.DAGRUN"]
-        if load:
+            self.commands = ["AI.DAGEXECUTE"]
+        if load is not None:
             if not isinstance(load, (list, tuple)):
                 self.commands += ["LOAD", 1, load]
             else:
                 self.commands += ["LOAD", len(load), *load]
-        if persist:
+        if persist is not None:
             if not isinstance(persist, (list, tuple)):
-                self.commands += ["PERSIST", 1, persist, "|>"]
+                self.commands += ["PERSIST", 1, persist]
             else:
-                self.commands += ["PERSIST", len(persist), *persist, "|>"]
-        else:
-            self.commands.append("|>")
+                self.commands += ["PERSIST", len(persist), *persist]
+        if keys is not None:
+            if not isinstance(keys, (list, tuple)):
+                self.commands += ["KEYS", 1, keys]
+            else:
+                self.commands += ["KEYS", len(keys), *keys]
+        if timeout is not None:
+            self.commands += ["TIMEOUT", timeout]
+
+        self.commands.append("|>")
         self.executor = executor
 
     def tensorset(
@@ -75,14 +82,14 @@ class Dag:
         inputs: Union[AnyStr, List[AnyStr]],
         outputs: Union[AnyStr, List[AnyStr]],
     ) -> Any:
-        args = builder.modelrun(key, inputs, outputs)
+        args = builder.modelexecute(key, inputs, outputs, None)
         self.commands.extend(args)
         self.commands.append("|>")
         self.result_processors.append(bytes.decode)
         return self
 
     def run(self):
-        commands = self.commands[:-1]  # removing the last "|>
+        commands = self.commands[:-1]  # removing the last "|>"
         results = self.executor(*commands)
         if self.enable_postprocess:
             out = []
