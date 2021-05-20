@@ -1,6 +1,6 @@
-from typing import AnyStr, ByteString, Callable, List, Sequence, Union
-
+from typing import Union, ByteString, Sequence, List, AnyStr, Callable
 import numpy as np
+
 
 dtype_dict = {
     "float": "FLOAT",

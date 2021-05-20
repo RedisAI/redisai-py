@@ -1,16 +1,17 @@
 from functools import partial
-from typing import Any, AnyStr, List, Sequence, Union
+from typing import AnyStr, Union, Sequence, Any, List
 
 import numpy as np
 
-from redisai import command_builder as builder
 from redisai.postprocessor import Processor
+from redisai import command_builder as builder
+
 
 processor = Processor()
 
 
 class Dag:
-    def __init__(self, load, persist, executor, readonly=False):
+    def __init__(self, load, persist, executor, readonly=False, postprocess=True):
         self.result_processors = []
         self.enable_postprocess = True
         if readonly:
