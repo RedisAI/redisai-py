@@ -70,7 +70,12 @@ class Client(StrictRedis):
         )
 
     def dag(
-        self, load: Sequence = None, persist: Sequence = None, readonly: bool = False
+        self,
+        load: Sequence = None,
+        persist: Sequence = None,
+        keys: Sequence = None,
+        timeout: int = None,
+        readonly: bool = False
     ) -> "Dag":
         """
         It returns a DAG object on which other DAG-allowed operations can be called. For
@@ -106,7 +111,7 @@ class Client(StrictRedis):
         >>> result = dag.tensorset(**akwargs).modelrun(**bkwargs).tensorget(**ckwargs).run()
         """
         return Dag(
-            load, persist, self.execute_command, readonly, self.enable_postprocess
+            load, persist, keys, timeout, self.execute_command, readonly, self.enable_postprocess
         )
 
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
