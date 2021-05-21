@@ -70,12 +70,7 @@ class Client(StrictRedis):
         )
 
     def dag(
-        self,
-        load: Sequence = None,
-        persist: Sequence = None,
-        keys: Sequence = None,
-        timeout: int = None,
-        readonly: bool = False
+        self, load: Sequence = None, persist: Sequence = None, readonly: bool = False
     ) -> "Dag":
         """
         It returns a DAG object on which other DAG-allowed operations can be called. For
@@ -87,12 +82,6 @@ class Client(StrictRedis):
             Load the list of given values from the keyspace to DAG scope
         persist : Union[AnyStr, List[AnyStr]]
             Write the list of given key, values to the keyspace from DAG scope
-        keys: Union[AnyStr, List[AnyStr]]
-            The keys' list which are used within this command.
-        timeout: int
-            The max number on milisecinds that may pass before the request is prossced
-            (meaning that the result will not be computed after that time and TIMEDOUT
-            is returned in that case)
         readonly : bool
             If True, it triggers AI.DAGRUN_RO, the read only DAG which cannot write (PERSIST) to
             the keyspace. But since it can't write, it can execute on replicas
@@ -117,7 +106,7 @@ class Client(StrictRedis):
         >>> result = dag.tensorset(**akwargs).modelrun(**bkwargs).tensorget(**ckwargs).run()
         """
         return Dag(
-            load, persist, keys, timeout, self.execute_command, readonly, self.enable_postprocess
+            load, persist, self.execute_command, readonly, self.enable_postprocess
         )
 
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
@@ -223,7 +212,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelstore(res)
 
-    @deprecated(version="1.2.2", reason="Use modelstore instead")
+    @deprecated(version="1.2.0", reason="Use modelstore instead")
     def modelset(
         self,
         key: AnyStr,
@@ -237,8 +226,34 @@ class Client(StrictRedis):
         outputs: Union[AnyStr, List[AnyStr]] = None,
     ) -> str:
         """
-        Similar to modelstore (this is the deprecated version that will not be
-        supported in future versions).
+        Set the model on provided key.
+
+        Parameters
+        ----------
+        key : AnyStr
+            Key name
+        backend : str
+            Backend name. Allowed backends are TF, TORCH, TFLITE, ONNX
+        device : str
+            Device name. Allowed devices are CPU and GPU. If multiple GPUs are available,
+            it can be specified using the format GPU:<gpu number>. For example: GPU:0
+        data : bytes
+            Model graph read as bytes string
+        batch : int
+            Number of batches for doing auto-batching
+        minbatch : int
+            Minimum number of samples required in a batch for model execution
+        tag : AnyStr
+            Any string that will be saved in RedisAI as tag for the model
+        inputs : Union[AnyStr, List[AnyStr]]
+            Input node(s) in the graph. Required only Tensorflow graphs
+        outputs : Union[AnyStr, List[AnyStr]]
+            Output node(s) in the graph Required only for Tensorflow graphs
+
+        Returns
+        -------
+        str
+            'OK' if success, raise an exception otherwise
 
         Example
         -------
@@ -358,7 +373,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelexecute(res)
 
-    @deprecated(version="1.2.2", reason="Use modelexecute instead")
+    @deprecated(version="1.2.0", reason="Use modelexecute instead")
     def modelrun(
         self,
         key: AnyStr,
@@ -366,8 +381,26 @@ class Client(StrictRedis):
         outputs: Union[AnyStr, List[AnyStr]],
     ) -> str:
         """
-        Similar to modelexecute (this is the deprecated version that will not be
-        supported in future versions).
+        Run the model using input(s) which are already in the scope and are associated
+        to some keys. Modelrun also needs the output key name(s) to store the output
+        from the model. The number of outputs from the model and the number of keys
+        provided here must be same. Otherwise, RedisAI throws an error
+
+        Parameters
+        ----------
+        key : str
+            Model key to run
+        inputs : Union[AnyStr, List[AnyStr]]
+            Tensor(s) which is already saved in the RedisAI using a tensorset call. These
+            tensors will be used as the input for the modelrun
+        outputs : Union[AnyStr, List[AnyStr]]
+            keys on which the outputs to be saved. If those keys exist already, modelrun
+            will overwrite them with new values
+
+        Returns
+        -------
+        str
+            'OK' if success, raise an exception otherwise
 
         Example
         -------
@@ -623,55 +656,6 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.scriptrun(key, function, inputs, outputs)
-        res = self.execute_command(*args)
-        return res if not self.enable_postprocess else processor.scriptrun(res)
-
-    def scriptexecute(
-        self,
-        key: AnyStr,
-        function: AnyStr,
-        keys: Union[AnyStr, Sequence[AnyStr]],
-        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        list_inputs: Sequence[Sequence[AnyStr]] = None,
-        outputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        timeout: int = None,
-    ) -> str:
-        """
-        Run an already set script. Similar to modelrun
-
-        Parameters
-        ----------
-        key : AnyStr
-            Script key
-        function : AnyStr
-            Name of the function in the ``script``
-        keys : Union[AnyStr, Sequence[AnyStr]]
-            Either a squence of key names that the script will access before, during and
-            after its execution, or a tag which all those keys share.
-        inputs : Union[AnyStr, List[AnyStr]]
-            Tensor(s) which is already saved in the RedisAI using a tensorset call. These
-            tensors will be used as the input for the modelrun
-        list_inputs : Sequence[Sequence[AnyStr]]
-            list of inputs.
-        outputs : Union[AnyStr, List[AnyStr]]
-            keys on which the outputs to be saved. If those keys exist already, modelrun
-            will overwrite them with new values
-        timeout : int
-            The max number on milisecinds that may pass before the request is prossced
-            (meaning that the result will not be computed after that time and TIMEDOUT
-            is returned in that case)
-
-        Returns
-        -------
-        str
-            'OK' if success, raise an exception otherwise
-
-        Example
-        -------
-        >>> con.scriptexecute('ket', 'bar', keys=['a', 'b', 'c'], inputs=['a', 'b'], outputs=['c'])
-        'OK'
-        """
-        args = builder.scriptexecute(key, function, keys, inputs, list_inputs, outputs, timeout)
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptrun(res)
 
