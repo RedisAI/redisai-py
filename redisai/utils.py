@@ -26,8 +26,7 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     try:
         dtype = dtype_dict[str(tensor.dtype)]
     except KeyError:
-        raise TypeError(
-            f"RedisAI doesn't support tensors of type {tensor.dtype}")
+        raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
     shape = tensor.shape
     blob = bytes(tensor.data)
     return dtype, shape, blob
