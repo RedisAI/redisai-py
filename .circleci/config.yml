@@ -71,26 +71,12 @@ commands:
             - ~/.cache/pip
           key: v1-dependencies-{{ checksum "pyproject.toml" }}
 
-  docker:
-    parameters:
-      docker_version:
-        type: string
-        default: "edge"
-    steps:
-      - setup_remote_docker
-      - run:
-          name: dockers
-          description: Build and release docker
-          command: |
-            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            docker build -t redisai-py:<<parameters.docker_version>> .
-            docker push
-
 jobs:
   build:
     parameters:
       python_version:
         type: string
+        default: "latest"
     docker:
       - image: circleci/python:<<parameters.python_version>>
       - image: redislabs/redisai:edge-cpu-bionic
@@ -100,20 +86,6 @@ jobs:
       - store_artifacts:
           path: test-reports
           destination: test-reports
-
-  # since this is used by cron, we by default build against latest
-  build_and_publish:
-    parameters:
-      docker_version:
-        type: string
-        default: "edge"
-    docker:
-      - image: circleci/python:latest
-      - image: redislabs/rediai:edge-cpu-bionic
-
-    steps:
-      - build_and_test
-      - docker
 
   nightly:
     parameters:
@@ -164,4 +136,4 @@ workflows:
           cron: "0 0 * * *"
           <<: *on-master
     jobs:
-      - build_and_publish
+      - build
