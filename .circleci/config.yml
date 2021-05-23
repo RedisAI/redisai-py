@@ -82,9 +82,8 @@ commands:
           name: dockers
           description: Build and release docker
           command: |
-            bash <(curl -fsSL https://get.docker.com)
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            docker build -t redisgraph:<<parameters.docker_version>> .
+            docker build -t redisai-py:<<parameters.docker_version>> .
             docker push
 
 jobs:
