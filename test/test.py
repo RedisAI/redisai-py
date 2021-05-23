@@ -504,11 +504,11 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
 
-        dag = con.dag(load="a")
+        dag = con.dag(load="a", keys="b")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
-        result = dag.run()
+        result = dag.execute()
         expected = ["OK", "OK", np.array(
             [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
@@ -520,13 +520,13 @@ class DagTestCase(RedisAITestBase):
 
         with self.assertRaises(ResponseError):
             dag = con.dag(persist="wrongkey")
-            dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float").run()
+            dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float").execute()
 
         dag = con.dag(persist=["b"])
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorget("b")
-        result = dag.run()
+        result = dag.execute()
         b = con.tensorget("b")
         self.assertTrue(np.allclose(b, result[-1]))
         self.assertEqual(b.dtype, np.float32)
@@ -538,9 +538,9 @@ class DagTestCase(RedisAITestBase):
         result = (
             con.dag(load="a")
             .tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-            .modelrun("pt_model", ["a", "b"], ["output"])
+            .modelexecute("pt_model", ["a", "b"], ["output"])
             .tensorget("output")
-            .run()
+            .execute()
         )
         expected = ["OK", "OK", np.array(
             [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
@@ -552,14 +552,14 @@ class DagTestCase(RedisAITestBase):
 
         dag = con.dag(load="wrongkey")
         with self.assertRaises(ResponseError):
-            dag.tensorget("wrongkey").run()
+            dag.tensorget("wrongkey").execute()
 
         dag = con.dag(keys=["a", "b", "output"])
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
-        result = dag.run()
+        result = dag.execute()
         expected = [
             "OK",
             "OK",
@@ -574,13 +574,13 @@ class DagTestCase(RedisAITestBase):
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag = con.dag(load=["a", "b"], persist="output")
-        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
-        result = dag.run()
+        result = dag.execute()
         expected = ["OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
         result_outside_dag = con.tensorget("output")
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
-        result = dag.run()
+        result = dag.execute()
         self.assertTrue(np.allclose(result_outside_dag, result.pop()))
         self.assertEqual(expected, result)
 
@@ -591,9 +591,9 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(RuntimeError):
             con.dag(load=["a", "b"], persist="output", readonly=True)
         dag = con.dag(load=["a", "b"], readonly=True)
-        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
-        result = dag.run()
+        result = dag.execute()
         expected = ["OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
 

@@ -76,7 +76,7 @@ class Dag:
         )
         return self
 
-    def modelrun(
+    def modelexecute(
         self,
         key: AnyStr,
         inputs: Union[AnyStr, List[AnyStr]],
@@ -88,7 +88,7 @@ class Dag:
         self.result_processors.append(bytes.decode)
         return self
 
-    def run(self):
+    def execute(self):
         commands = self.commands[:-1]  # removing the last "|>"
         results = self.executor(*commands)
         if self.enable_postprocess:
