@@ -42,8 +42,7 @@ class Processor:
                 mutable=False,
             )
         else:
-            target = float if rai_result["dtype"] in (
-                "FLOAT", "DOUBLE") else int
+            target = float if rai_result["dtype"] in ("FLOAT", "DOUBLE") else int
             utils.recursive_bytetransform(rai_result["values"], target)
             return rai_result
 

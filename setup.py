@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-from setuptools import find_packages, setup
+from setuptools import setup, find_packages
+
 
 with open("README.rst") as f:
     long_description = f.read()
