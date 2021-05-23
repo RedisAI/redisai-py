@@ -17,7 +17,7 @@ class Dag:
         if load is None and persist is None and keys is None:
             raise RuntimeError(
                 "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
-                "at least one out of KEYS, LOAD, PERSIST parameters"
+                "at least one out of LOAD, PERSIST, KEYS parameters"
             )
         if readonly:
             if persist:
