@@ -469,7 +469,7 @@ class ClientTestCase(RedisAITestBase):
         con.tensorset("mytensor3{1}", [1], dtype="float")
         con.scriptexecute("myscript{1}", "func",
                     keys=["{1}"],
-                    inputs=["mytensor3{1}", 3, ["mytensor1{1}", "mytensor2{1}", "mytensor3{1}]"], "alon", [1.25, 4.2]],
+                    inputs=["mytensor3{1}", 3, ["mytensor1{1}", "mytensor2{1}", "mytensor3{1}]"], "test", [1.25, 4.2]],
                     outputs=["my_output{1}"])
 
         values = con.tensorget("result{$}", as_numpy=False)
