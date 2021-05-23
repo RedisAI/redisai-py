@@ -2,6 +2,8 @@ import os.path
 import sys
 from io import StringIO
 from unittest import TestCase
+from skimage.io import imread
+from skimage.transform import resize
 
 import numpy as np
 from ml2rt import load_model
@@ -12,6 +14,7 @@ from redisai import Client
 DEBUG = False
 tf_graph = "graph.pb"
 torch_graph = "pt-minimal.pt"
+dog_img = "dog.jpg"
 
 
 class Capturing(list):
@@ -32,6 +35,20 @@ def bar(a, b):
     return a + b
 """
 
+data_processing_script = r"""
+def pre_process_3ch(image):
+    return image.float().div(255).unsqueeze(0)
+
+def pre_process_4ch(image):
+    return image.float().div(255)[:,:,:-1].contiguous().unsqueeze(0)
+
+def post_process(output):
+    # tf model has 1001 classes, hence negative 1
+    return output.max(1)[1] - 1
+
+def ensemble(output0, output1):
+    return (output0 + output1) * 0.5
+"""
 
 class RedisAITestBase(TestCase):
     def setUp(self):
@@ -492,6 +509,16 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(["AI.TENSORSET x FLOAT 4 VALUES 2 3 4 5"], output)
 
 
+def load_image():
+    image_filename = os.path.join(MODEL_DIR, dog_img)
+    img_height, img_width = 224, 224
+
+    img = imread(image_filename)
+    img = resize(img, (img_height, img_width), mode='constant', anti_aliasing=True)
+    img = img.astype(np.uint8)
+    return img
+
+
 class DagTestCase(RedisAITestBase):
     def setUp(self):
         super().setUp()
@@ -514,6 +541,27 @@ class DagTestCase(RedisAITestBase):
         result = dag.run()
         self.assertTrue(np.allclose(result_outside_dag, result.pop()))
         self.assertEqual(expected, result)
+
+    """
+    def test_dagexecute_modelexecute_with_scriptexecute(self):
+        con = self.get_client()
+        script_name = 'imagenet_script:{1}'
+        model_name = 'imagenet_model:{1}'
+        
+        img = load_image()
+        model_path = os.path.join(MODEL_DIR, "resnet50.pb")
+        model = load_model(model_path)
+        con.scriptset(script_name, 'cpu', data_processing_script)
+        con.modelstore(model_name, 'TF', 'cpu', model, inputs='images', outputs='output')
+        
+        dag = con.dag(persist='output:{1}')
+        dag.tensorset('image:{1}', tensor=img, shape=(img.shape[1], img.shape[0]), dtype='UINT8')
+        dag.scriptexecute(script_name, 'pre_process_3ch', keys=[], inputs='image:{1}', outputs='temp_key1')
+        dag.modelexecute(model_name, inputs='temp_key1', outputs='temp_key2')
+        dag.scriptexecute(script_name, 'post_process', keys=[], inputs='temp_key2', outputs='output:{1}')
+        ret = dag.execute()
+        self.assertEqual(['OK', 'OK', 'OK', 'OK'], ret)
+    """
 
     def test_dagexecute_with_load(self):
         con = self.get_client()
@@ -608,6 +656,10 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(RuntimeError):
             con.dag(load=["a", "b"], persist="output", readonly=True)
         dag = con.dag(load=["a", "b"], readonly=True)
+        """
+        with self.assertRaises(RuntimeError):
+            dag.scriptexecute()
+        """
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
         result = dag.execute()

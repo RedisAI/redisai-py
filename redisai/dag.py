@@ -104,6 +104,24 @@ class Dag:
         self.result_processors.append(bytes.decode)
         return self
 
+    def scriptexecute(
+        self,
+        key: AnyStr,
+        function: str,
+        keys: Union[AnyStr, Sequence[AnyStr]],
+        inputs: Union[AnyStr, Sequence[Union[AnyStr, Sequence[AnyStr]]]] = None,
+        outputs: Union[AnyStr, List[AnyStr]] = None,
+    ) -> Any:
+        if self.readonly:
+            raise RuntimeError(
+                "AI.SCRIPTEXECUTE cannot be used in readonly mode"
+            )
+        args = builder.scriptexecute(key, function, keys, inputs, outputs, None)
+        self.commands.extend(args)
+        self.commands.append("|>")
+        self.result_processors.append(bytes.decode)
+        return self
+
     @deprecated(version="1.2.0", reason="Use execute instead")
     def run(self):
         return self.execute()
