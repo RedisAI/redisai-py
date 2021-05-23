@@ -554,7 +554,7 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(ResponseError):
             dag.tensorget("wrongkey").run()
 
-        dag = con.dag()
+        dag = con.dag(keys=["a", "b", "output"])
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelrun("pt_model", ["a", "b"], ["output"])
