@@ -5,6 +5,7 @@ import numpy as np
 
 from redisai import command_builder as builder
 from redisai.postprocessor import Processor
+from deprecated import deprecated
 
 processor = Processor()
 
@@ -13,6 +14,11 @@ class Dag:
     def __init__(self, load, persist, keys, timeout, executor, readonly=False, postprocess=True):
         self.result_processors = []
         self.enable_postprocess = True
+        if load is None and persist is None and keys is None:
+            raise RuntimeError(
+                "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
+                "at least one out of KEYS, LOAD, PERSIST parameters"
+            )
         if readonly:
             if persist:
                 raise RuntimeError(
@@ -42,6 +48,7 @@ class Dag:
 
         self.commands.append("|>")
         self.executor = executor
+        self.readonly = readonly
 
     def tensorset(
         self,
@@ -76,6 +83,15 @@ class Dag:
         )
         return self
 
+    @deprecated(version="1.2.0", reason="Use modelexecute instead")
+    def modelrun(
+            self,
+            key: AnyStr,
+            inputs: Union[AnyStr, List[AnyStr]],
+            outputs: Union[AnyStr, List[AnyStr]],
+    ) -> Any:
+        return self.modelexecute(key, inputs, outputs)
+
     def modelexecute(
         self,
         key: AnyStr,
@@ -87,6 +103,10 @@ class Dag:
         self.commands.append("|>")
         self.result_processors.append(bytes.decode)
         return self
+
+    @deprecated(version="1.2.0", reason="Use execute instead")
+    def run(self):
+        return self.execute()
 
     def execute(self):
         commands = self.commands[:-1]  # removing the last "|>"
