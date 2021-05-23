@@ -500,6 +500,21 @@ class DagTestCase(RedisAITestBase):
         ptmodel = load_model(model_path)
         con.modelstore("pt_model", "torch", "cpu", ptmodel, tag="v7.0")
 
+    def test_deprecated_dugrun(self):
+        con = self.get_client()
+        con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag = con.dag(load=["a", "b"], persist="output")
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget("output")
+        result = dag.run()
+        expected = ["OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
+        result_outside_dag = con.tensorget("output")
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        result = dag.run()
+        self.assertTrue(np.allclose(result_outside_dag, result.pop()))
+        self.assertEqual(expected, result)
+
     def test_dagrun_with_load(self):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
@@ -549,6 +564,8 @@ class DagTestCase(RedisAITestBase):
 
     def test_dagrun_without_load_and_persist(self):
         con = self.get_client()
+        with self.assertRaises(RuntimeError):
+            con.dag()
 
         dag = con.dag(load="wrongkey")
         with self.assertRaises(ResponseError):
