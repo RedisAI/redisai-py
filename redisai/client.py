@@ -626,7 +626,7 @@ class Client(StrictRedis):
     def scriptrun(
         self,
         key: AnyStr,
-        function: AnyStr,
+        function: str,
         inputs: Union[AnyStr, Sequence[AnyStr]],
         outputs: Union[AnyStr, Sequence[AnyStr]],
     ) -> str:
@@ -637,7 +637,7 @@ class Client(StrictRedis):
         ----------
         key : AnyStr
             Script key
-        function : AnyStr
+        function : str
             Name of the function in the ``script``
         inputs : Union[AnyStr, List[AnyStr]]
             Tensor(s) which is already saved in the RedisAI using a tensorset call. These
