@@ -63,7 +63,7 @@ commands:
       - run:
           name: run tests
           command:
-            tox -e nosetests
+            tox -e tests
 
       - save_cache:
           paths:
