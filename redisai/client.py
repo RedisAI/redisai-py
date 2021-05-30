@@ -1,6 +1,6 @@
 import warnings
-from functools import partial, wraps
-from typing import Any, AnyStr, ByteString, List, Sequence, Union
+from functools import wraps
+from typing import AnyStr, ByteString, List, Sequence, Union
 
 import numpy as np
 from deprecated import deprecated
@@ -65,8 +65,8 @@ class Client(StrictRedis):
             self.enable_postprocess,
             self.connection_pool,
             self.response_callbacks,
-            transaction=True,
-            shard_hint=None,
+            transaction=transaction,
+            shard_hint=shard_hint,
         )
 
     def dag(
