@@ -411,7 +411,7 @@ class ClientTestCase(RedisAITestBase):
         tflmodel = load_model(model_path)
         con = self.get_client()
         con.modelstore("tfl_model", "tflite", "cpu", tflmodel)
-        img = np.random.random((1, 1, 28, 28)).astype(np.float)
+        img = np.random.random((1, 1, 28, 28)).astype(np.float32)
         con.tensorset("img", img)
         con.modelexecute("tfl_model", ["img"], ["output1", "output2"])
         output = con.tensorget("output1")
