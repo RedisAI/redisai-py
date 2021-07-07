@@ -203,8 +203,14 @@ def tensorget(key: AnyStr, as_numpy: bool = True, meta_only: bool = False) -> Se
             args.append("VALUES")
     return args
 
-def scriptstore(name: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]], tag: AnyStr = None)\
-        -> Sequence:
+
+def scriptstore(
+        name: AnyStr,
+        device: str,
+        script: str,
+        entry_points: Union[str, Sequence[str]],
+        tag: AnyStr = None
+) -> Sequence:
     if device.upper() not in utils.allowed_devices:
         raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
     args = ["AI.SCRIPTSTORE", name, device]
@@ -214,6 +220,7 @@ def scriptstore(name: AnyStr, device: str, script: str, entry_points: Union[str,
     args.append("SOURCE")
     args.append(script)
     return args
+
 
 def scriptset(name: AnyStr, device: str, script: str, tag: AnyStr = None) -> Sequence:
     if device.upper() not in utils.allowed_devices:
@@ -256,6 +263,7 @@ def scriptrun(
     )
     return args
 
+
 def scriptexecute(
     name: AnyStr,
     function: str,
@@ -286,6 +294,7 @@ def scriptexecute(
         args += ["TIMEOUT", timeout]
 
     return args
+
 
 def scriptscan() -> Sequence:
     return ("AI._SCRIPTSCAN",)

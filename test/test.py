@@ -31,7 +31,7 @@ TENSOR_DIR = MODEL_DIR
 script_old = r"""
 def bar(a, b):
     return a + b
-    
+
 def bar_variadic(a, args : List[Tensor]):
     return args[0] + args[1]
 """
@@ -58,13 +58,13 @@ def int_set_get(tensors: List[Tensor], keys: List[str], args: List[str]):
     redis.execute("SET", key, str(value))
     res = redis.execute("GET", key)
     return redis_string_int_to_tensor(res)
-    
+
 def func(tensors: List[Tensor], keys: List[str], args: List[str]):
     redis.execute("SET", keys[0], args[0])
     a = torch.stack(tensors).sum()
     b = redis_string_int_to_tensor(redis.execute("GET", keys[0]))
     redis.execute("DEL", keys[0])
-    return b + a 
+    return b + a
 """
 
 
@@ -457,10 +457,10 @@ class ClientTestCase(RedisAITestBase):
         con.tensorset("mytensor2{1}", [10], dtype="float")
         con.tensorset("mytensor3{1}", [1], dtype="float")
         con.scriptexecute("myscript{1}", "func",
-                    keys=["key{1}", "key2{1}"],
-                    inputs=["mytensor1{1}", "mytensor2{1}", "mytensor3{1}"],
-                    input_args=["3"],
-                    outputs=["my_output{1}"])
+                          keys=["key{1}", "key2{1}"],
+                          inputs=["mytensor1{1}", "mytensor2{1}", "mytensor3{1}"],
+                          input_args=["3"],
+                          outputs=["my_output{1}"])
         values = con.tensorget("my_output{1}", as_numpy=False)
         self.assertTrue(np.allclose(values["values"], [54]))
 
