@@ -567,6 +567,12 @@ class Client(StrictRedis):
         documentation. It's also important to note that that the script is executed on a high
         performance C++ runtime instead of the Python interpreter. And hence ``script`` should
         not have any import statements (A common mistake people make all the time)
+
+        Example
+        -------
+        >>> script = open(scriptpath).read()
+        >>> con.scriptset('ket', 'cpu', script, 'func')
+        'OK'
         """
         args = builder.scriptstore(key, device, script, entry_points, tag)
         res = self.execute_command(*args)
@@ -752,7 +758,8 @@ class Client(StrictRedis):
         'OK'
         >>> con.scriptexecute('myscript{tag}', 'addn',
         >>>                   keys=['{tag}'],
-        >>>                   inputs=['mytensor1{tag}', ['mytensor2{tag}', 'mytensor3{tag}']],
+        >>>                   inputs=['mytensor1{tag}', 'mytensor2{tag}', 'mytensor3{tag}'],
+        >>>                   input_args=['5.0'],
         >>>                   outputs=['result{tag}'])
         'OK'
         """
