@@ -27,36 +27,43 @@ class Capturing(list):
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/testdata"
-script = r"""
+script_old = r"""
 def bar(a, b):
     return a + b
     
 def bar_variadic(a, args : List[Tensor]):
     return args[0] + args[1]
-    
-def bar_two_lists(a: List[Tensor], b:List[Tensor]):
-    return a[0] + b[0]
-    
-def addn(a, args : List[Tensor]):
-    return a + torch.stack(args).sum()
+"""
+
+script = r"""
+def bar(tensors: List[Tensor], keys: List[str], args: List[str]):
+    a = tensors[0]
+    b = tensors[1]
+    return a + b
+
+def bar_variadic(tensors: List[Tensor], keys: List[str], args: List[str]):
+    a = tensors[0]
+    l = tensors[1:]
+    return a + l[0]
 """
 
 script_with_redis_commands = r"""
 def redis_string_int_to_tensor(redis_value: Any):
     return torch.tensor(int(str(redis_value)))
 
-def int_set_get(key:str, value:int):
+def int_set_get(tensors: List[Tensor], keys: List[str], args: List[str]):
+    key = args[0]
+    value = int(args[1])
     redis.execute("SET", key, str(value))
     res = redis.execute("GET", key)
     return redis_string_int_to_tensor(res)
-
-def func(a: Tensor, b: int, c: List[Tensor], d:str, e:List[float]):
-    redis.execute("SET", "key{1}", str(b))
-    redis.execute("SET", d, str(torch.stack(c).sum().data[0]))
-    res = redis.execute("GET", d)
-    temp = redis_string_int_to_tensor(res)
-    redis.execute("DEL", d)
-    return torch.cat([a, temp, torch.tensor(e)], 0)
+    
+def func(tensors: List[Tensor], keys: List[str], args: List[str]):
+    redis.execute("SET", keys[0], args[0])
+    a = torch.stack(tensors).sum()
+    b = redis_string_int_to_tensor(redis.execute("GET", keys[0]))
+    redis.execute("DEL", keys[0])
+    return b + a 
 """
 
 
@@ -380,26 +387,34 @@ class ClientTestCase(RedisAITestBase):
         con = self.get_client()
         self.assertRaises(ResponseError, con.scriptset,
                           "ket", "cpu", "return 1")
-        con.scriptset("ket", "cpu", script)
+        con.scriptset("ket", "cpu", script_old, "bar")
         con.tensorset("a", (2, 3), dtype="float")
         con.tensorset("b", (2, 3), dtype="float")
+
+        # test bar(a, b)
         con.scriptrun("ket", "bar", inputs=["a", "b"], outputs=["c"])
+        tensor = con.tensorget("c", as_numpy=False)
+        self.assertEqual([4, 6], tensor["values"])
+
+        # test bar_variadic(a, args : List[Tensor])
+        con.scriptrun("ket", "bar_variadic", inputs=["a", "$", "b", "b"], outputs=["c"])
         tensor = con.tensorget("c", as_numpy=False)
         self.assertEqual([4, 6], tensor["values"])
 
     def test_scripts_execute(self):
         con = self.get_client()
-        self.assertRaises(ResponseError, con.scriptset, "ket", "cpu", "return 1")
-        con.scriptset("ket", "cpu", script)
+        self.assertRaises(ResponseError, con.scriptstore, "ket", "cpu", "return 1", "f")
+        con.scriptstore("ket", "cpu", script, "bar")
         con.tensorset("a", (2, 3), dtype="float")
         con.tensorset("b", (2, 3), dtype="float")
 
         # try with bad arguments:
         with self.assertRaises(ValueError) as e:
-            con.scriptexecute("ket", function=None, keys=None)
+            con.scriptexecute("ket", function=None, keys=None, inputs=None)
         self.assertEqual(str(e.exception), "Missing required arguments for script execute command")
         self.assertRaises(ResponseError, con.scriptexecute, "ket", "bar", keys=["a", "c"], inputs=["a"], outputs=["c"])
 
+        # update new bar
         con.scriptexecute("ket", "bar", keys=["a", "b", "c"], inputs=["a", "b"], outputs=["c"])
         tensor = con.tensorget("c", as_numpy=False)
         self.assertEqual([4, 6], tensor["values"])
@@ -409,72 +424,44 @@ class ClientTestCase(RedisAITestBase):
         script_det = con.scriptget("ket", meta_only=True)
         self.assertTrue(script_det["device"] == "cpu")
         self.assertNotIn("source", script_det)
+        # delete the script
         con.scriptdel("ket")
         self.assertRaises(ResponseError, con.scriptget, "ket")
 
-        con.scriptset("myscript{1}", "cpu", script, "version1")
+        # store new script
+        con.scriptstore("myscript{1}", "cpu", script, ["bar", "bar_variadic"], "version1")
         con.tensorset("a{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.scriptexecute("myscript{1}", "bar", keys=["{1}"], inputs=["a{1}", "b{1}"], outputs=["c{1}"])
         values = con.tensorget("c{1}", as_numpy=False)
         self.assertTrue(np.allclose(values["values"], [4.0, 6.0, 4.0, 6.0]))
 
-    def test_scripts_commands_support(self):
+        con.tensorset("b1{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.scriptexecute("myscript{1}", 'bar_variadic',
+                          keys=["{1}"],
+                          inputs=["a{1}", "b1{1}", "b{1}"],
+                          outputs=["c{1}"])
+
+        values = con.tensorget("c{1}", as_numpy=False)['values']
+        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
+
+    def test_scripts_redis_commands(self):
         con = self.get_client()
-        con.scriptset("myscript{1}", "cpu", script_with_redis_commands)
-        con.scriptexecute("myscript{1}", "int_set_get", keys=["{1}"], inputs=["x{1}", 3], outputs=["y{1}"])
+        con.scriptstore("myscript{1}", "cpu", script_with_redis_commands, ["int_set_get", "func"])
+        con.scriptexecute("myscript{1}", "int_set_get", keys=["{1}"], input_args=["x{1}", "3"], outputs=["y{1}"])
         values = con.tensorget("y{1}", as_numpy=False)
         self.assertTrue(np.allclose(values["values"], [3]))
 
-    def test_scripts_execute_list_input(self):
-        con = self.get_client()
-        con.scriptset("myscript{$}", "cpu", script, "version1")
-        con.tensorset("a{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        con.tensorset("b1{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        con.tensorset("b2{$}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-
-        con.scriptexecute("myscript{$}", 'bar_variadic',
-                          keys=["{$}"],
-                          inputs=["a{$}", ["b1{$}", "b2{$}"]],
-                          outputs=["c{$}"])
-
-        values = con.tensorget("c{$}", as_numpy=False)['values']
-        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
-
-        con.scriptexecute('myscript{$}', 'bar_two_lists',
-                          keys=["{$}"],
-                          inputs=[["a{$}"], ["b1{$}"]],
-                          outputs=["c{$}"])
-
-        values = con.tensorget("c{$}", as_numpy=False)['values']
-        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
-
-        con.tensorset("mytensor1{$}", [40], dtype="float")
-        con.tensorset("mytensor2{$}", [1], dtype="float")
-        con.tensorset("mytensor3{$}", [1], dtype="float")
-        con.scriptexecute("myscript{$}", "addn",
-                          keys=["{$}"],
-                          inputs=["mytensor1{$}", ["mytensor2{$}", "mytensor3{$}"]],
-                          outputs=["result{$}"])
-
-        values = con.tensorget("result{$}", as_numpy=False)
-        self.assertTrue(np.allclose(values["values"], [42]))
-
-    """
-    def test_scripts_execute_multiple_list_input(self):
-        con = self.get_client()
-        con.scriptset("myscript{1}", "cpu", script_with_redis_commands)
         con.tensorset("mytensor1{1}", [40], dtype="float")
         con.tensorset("mytensor2{1}", [10], dtype="float")
         con.tensorset("mytensor3{1}", [1], dtype="float")
         con.scriptexecute("myscript{1}", "func",
-                    keys=["{1}"],
-                    inputs=["mytensor3{1}", 3, ["mytensor1{1}", "mytensor2{1}", "mytensor3{1}]"], "test", [1.25, 4.2]],
+                    keys=["key{1}", "key2{1}"],
+                    inputs=["mytensor1{1}", "mytensor2{1}", "mytensor3{1}"],
+                    input_args=["3"],
                     outputs=["my_output{1}"])
-
-        values = con.tensorget("result{$}", as_numpy=False)
-        self.assertTrue(np.allclose(values["values"], [1, 51, 1.25, 4.2]))
-    """
+        values = con.tensorget("my_output{1}", as_numpy=False)
+        self.assertTrue(np.allclose(values["values"], [54]))
 
     def test_run_onnxml_model(self):
         mlmodel_path = os.path.join(MODEL_DIR, "boston.onnx")

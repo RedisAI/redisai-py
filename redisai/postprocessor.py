@@ -70,6 +70,7 @@ decoding_functions = (
     "modelrun",
     "tensorset",
     "scriptset",
+    "scriptstore",
     "scriptdel",
     "scriptrun",
     "scriptexecute",

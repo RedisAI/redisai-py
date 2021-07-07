@@ -203,6 +203,17 @@ def tensorget(key: AnyStr, as_numpy: bool = True, meta_only: bool = False) -> Se
             args.append("VALUES")
     return args
 
+def scriptstore(name: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]], tag: AnyStr = None)\
+        -> Sequence:
+    if device.upper() not in utils.allowed_devices:
+        raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
+    args = ["AI.SCRIPTSTORE", name, device]
+    if tag:
+        args += ["TAG", tag]
+    args += ["ENTRY_POINTS", len(utils.listify(entry_points)), *utils.listify(entry_points)]
+    args.append("SOURCE")
+    args.append(script)
+    return args
 
 def scriptset(name: AnyStr, device: str, script: str, tag: AnyStr = None) -> Sequence:
     if device.upper() not in utils.allowed_devices:
@@ -249,11 +260,12 @@ def scriptexecute(
     name: AnyStr,
     function: str,
     keys: Union[AnyStr, Sequence[AnyStr]],
-    inputs: Union[AnyStr, Sequence[Union[AnyStr, Sequence[AnyStr]]]],
+    inputs: Union[AnyStr, Sequence[AnyStr]],
+    input_args: Union[AnyStr, Sequence[AnyStr]],
     outputs: Union[AnyStr, Sequence[AnyStr]],
     timeout: int,
 ) -> Sequence:
-    if name is None or function is None or keys is None:
+    if name is None or function is None or (keys is None and inputs is None):
         raise ValueError("Missing required arguments for script execute command")
     args = [
         "AI.SCRIPTEXECUTE",
@@ -265,20 +277,9 @@ def scriptexecute(
     ]
 
     if inputs is not None:
-        temp_inputs = []
-        if not isinstance(inputs, (list, tuple)):
-            args += ["INPUTS", 1, inputs]
-        else:
-            for elem in inputs:
-                if isinstance(elem, (list, tuple)):
-                    if temp_inputs:
-                        args += ["INPUTS", len(temp_inputs), *temp_inputs]
-                        temp_inputs = []
-                    args += ["LIST_INPUTS", len(utils.listify(elem)), *utils.listify(elem)]
-                else:
-                    temp_inputs.append(elem)
-            if temp_inputs:
-                args += ["INPUTS", len(temp_inputs), *temp_inputs]
+        args += ["INPUTS", len(utils.listify(inputs)), *utils.listify(inputs)]
+    if input_args is not None:
+        args += ["ARGS", len(utils.listify(input_args)), *utils.listify(input_args)]
     if outputs is not None:
         args += ["OUTPUTS", len(utils.listify(outputs)), *utils.listify(outputs)]
     if timeout is not None:
