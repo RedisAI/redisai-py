@@ -388,7 +388,7 @@ class ClientTestCase(RedisAITestBase):
         con = self.get_client()
         self.assertRaises(ResponseError, con.scriptset,
                           "ket", "cpu", "return 1")
-        con.scriptset("ket", "cpu", script_old, "bar")
+        con.scriptset("ket", "cpu", script_old)
         con.tensorset("a", (2, 3), dtype="float")
         con.tensorset("b", (2, 3), dtype="float")
 
@@ -404,18 +404,16 @@ class ClientTestCase(RedisAITestBase):
 
     def test_scripts_execute(self):
         con = self.get_client()
-        self.assertRaises(ResponseError, con.scriptstore, "ket", "cpu", "return 1", "f")
-        con.scriptstore("ket", "cpu", script, "bar")
-        con.tensorset("a", (2, 3), dtype="float")
-        con.tensorset("b", (2, 3), dtype="float")
-
         # try with bad arguments:
         with self.assertRaises(ValueError) as e:
             con.scriptexecute("ket", function=None, keys=None, inputs=None)
         self.assertEqual(str(e.exception), "Missing required arguments for script execute command")
         self.assertRaises(ResponseError, con.scriptexecute, "ket", "bar", keys=["a", "c"], inputs=["a"], outputs=["c"])
+        self.assertRaises(ResponseError, con.scriptstore, "ket", "cpu", "return 1", "f")
 
-        # update new bar
+        con.scriptstore("ket", "cpu", script, "bar")
+        con.tensorset("a", (2, 3), dtype="float")
+        con.tensorset("b", (2, 3), dtype="float")
         con.scriptexecute("ket", "bar", keys=["a", "b", "c"], inputs=["a", "b"], outputs=["c"])
         tensor = con.tensorget("c", as_numpy=False)
         self.assertEqual([4, 6], tensor["values"])
