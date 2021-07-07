@@ -571,7 +571,7 @@ class Client(StrictRedis):
         Example
         -------
         >>> script = open(scriptpath).read()
-        >>> con.scriptset('ket', 'cpu', script, 'func')
+        >>> con.scriptsore('ket', 'cpu', script, 'func')
         'OK'
         """
         args = builder.scriptstore(key, device, script, entry_points, tag)
