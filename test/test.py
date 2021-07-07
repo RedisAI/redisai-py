@@ -27,6 +27,7 @@ class Capturing(list):
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/testdata"
+TENSOR_DIR = MODEL_DIR
 script_old = r"""
 def bar(a, b):
     return a + b
@@ -503,11 +504,14 @@ class ClientTestCase(RedisAITestBase):
         tflmodel = load_model(model_path)
         con = self.get_client()
         con.modelstore("tfl_model", "tflite", "cpu", tflmodel)
-        img = np.random.random((1, 1, 28, 28)).astype(np.float)
+
+        input_path = os.path.join(TENSOR_DIR, "one.raw")
+        with open(input_path, 'rb') as f:
+            img = np.frombuffer(f.read(), dtype=np.float32)
         con.tensorset("img", img)
         con.modelexecute("tfl_model", ["img"], ["output1", "output2"])
         output = con.tensorget("output1")
-        self.assertTrue(np.allclose(output, [8]))
+        self.assertEqual(output, [1])
 
     # AI.MODELRUN is deprecated by AI.MODELEXECUTE
     def test_deprecated_modelrun(self):
