@@ -529,7 +529,7 @@ class Client(StrictRedis):
         )
 
     def scriptstore(
-        self, key: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]] , tag: AnyStr = None
+        self, key: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]], tag: AnyStr = None
     ) -> str:
         """
         Set the script to RedisAI. Action similar to scriptset. The difference is that in
