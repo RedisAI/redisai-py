@@ -1,5 +1,4 @@
 from typing import AnyStr, ByteString, Callable, List, Sequence, Union
-
 import numpy as np
 
 dtype_dict = {

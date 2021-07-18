@@ -30,9 +30,44 @@ class Capturing(list):
 
 
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/testdata"
-script = r"""
+TENSOR_DIR = MODEL_DIR
+script_old = r"""
 def bar(a, b):
     return a + b
+
+def bar_variadic(a, args : List[Tensor]):
+    return args[0] + args[1]
+"""
+
+script = r"""
+def bar(tensors: List[Tensor], keys: List[str], args: List[str]):
+    a = tensors[0]
+    b = tensors[1]
+    return a + b
+
+def bar_variadic(tensors: List[Tensor], keys: List[str], args: List[str]):
+    a = tensors[0]
+    l = tensors[1:]
+    return a + l[0]
+"""
+
+script_with_redis_commands = r"""
+def redis_string_int_to_tensor(redis_value: Any):
+    return torch.tensor(int(str(redis_value)))
+
+def int_set_get(tensors: List[Tensor], keys: List[str], args: List[str]):
+    key = keys[0]
+    value = int(args[0])
+    redis.execute("SET", key, str(value))
+    res = redis.execute("GET", key)
+    return redis_string_int_to_tensor(res)
+
+def func(tensors: List[Tensor], keys: List[str], args: List[str]):
+    redis.execute("SET", keys[0], args[0])
+    a = torch.stack(tensors).sum()
+    b = redis_string_int_to_tensor(redis.execute("GET", keys[0]))
+    redis.execute("DEL", keys[0])
+    return b + a
 """
 
 data_processing_script = r"""
@@ -365,28 +400,97 @@ class ClientTestCase(RedisAITestBase):
         con.modeldel("m")
         self.assertRaises(ResponseError, con.modelget, "m")
 
-    def test_scripts(self):
+    # AI.SCRIPTRUN is deprecated by AI.SCRIPTEXECUTE
+    # and AI.SCRIPTSET is deprecated by AI.SCRIPTSTORE
+    def test_deprecated_scriptset_and_scriptrun(self):
         con = self.get_client()
-        self.assertRaises(ResponseError, con.scriptset,
-                          "ket", "cpu", "return 1")
-        con.scriptset("ket", "cpu", script)
+        self.assertRaises(ResponseError, con.scriptset, "scr", "cpu", "return 1")
+        con.scriptset("scr", "cpu", script_old)
         con.tensorset("a", (2, 3), dtype="float")
         con.tensorset("b", (2, 3), dtype="float")
-        # try with bad arguments:
-        self.assertRaises(
-            ResponseError, con.scriptrun, "ket", "bar", inputs=["a"], outputs=["c"]
-        )
-        con.scriptrun("ket", "bar", inputs=["a", "b"], outputs=["c"])
+
+        # test bar(a, b)
+        con.scriptrun("scr", "bar", inputs=["a", "b"], outputs=["c"])
         tensor = con.tensorget("c", as_numpy=False)
         self.assertEqual([4, 6], tensor["values"])
-        script_det = con.scriptget("ket")
+
+        # test bar_variadic(a, args : List[Tensor])
+        con.scriptrun("scr", "bar_variadic", inputs=["a", "$", "b", "b"], outputs=["c"])
+        tensor = con.tensorget("c", as_numpy=False)
+        self.assertEqual([4, 6], tensor["values"])
+
+    def test_scriptstore(self):
+        con = self.get_client()
+        # try with bad arguments:
+        with self.assertRaises(ValueError) as e:
+            con.scriptstore("test", "cpu", script, entry_points=None)
+        self.assertEqual(str(e.exception), "Missing required arguments for script store command")
+        self.assertRaises(ValueError, con.scriptstore, "test", "cpu", script=None, entry_points="bar")
+        with self.assertRaises(ResponseError) as e:
+            con.scriptstore("test", "cpu", "return 1", "f")
+        self.assertEqual(str(e.exception),
+                         "expected def but found 'return' here:   File \"<string>\", line 1 return 1 ~~~~~~ <--- HERE ")
+
+    def test_scripts_execute(self):
+        con = self.get_client()
+        # try with bad arguments:
+        with self.assertRaises(ValueError) as e:
+            con.scriptexecute("test", function=None, keys=None, inputs=None)
+        self.assertEqual(str(e.exception), "Missing required arguments for script execute command")
+        with self.assertRaises(ResponseError) as e:
+            con.scriptexecute("test", "bar", inputs=["a"], outputs=["c"])
+        self.assertEqual(str(e.exception), "script key is empty")
+
+        con.scriptstore("test", "cpu", script, "bar")
+        con.tensorset("a", (2, 3), dtype="float")
+        con.tensorset("b", (2, 3), dtype="float")
+        con.scriptexecute("test", "bar", inputs=["a", "b"], outputs=["c"])
+        tensor = con.tensorget("c", as_numpy=False)
+        self.assertEqual([4, 6], tensor["values"])
+        script_det = con.scriptget("test")
         self.assertTrue(script_det["device"] == "cpu")
         self.assertTrue(script_det["source"] == script)
-        script_det = con.scriptget("ket", meta_only=True)
+        script_det = con.scriptget("test", meta_only=True)
         self.assertTrue(script_det["device"] == "cpu")
         self.assertNotIn("source", script_det)
-        con.scriptdel("ket")
-        self.assertRaises(ResponseError, con.scriptget, "ket")
+        # delete the script
+        con.scriptdel("test")
+        self.assertRaises(ResponseError, con.scriptget, "test")
+
+        # store new script
+        con.scriptstore("myscript{1}", "cpu", script, ["bar", "bar_variadic"], "version1")
+        con.tensorset("a{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+        values = con.tensorget("c{1}", as_numpy=False)
+        self.assertTrue(np.allclose(values["values"], [4.0, 6.0, 4.0, 6.0]))
+
+        con.tensorset("b1{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.scriptexecute("myscript{1}", 'bar_variadic',
+                          inputs=["a{1}", "b1{1}", "b{1}"],
+                          outputs=["c{1}"])
+
+        values = con.tensorget("c{1}", as_numpy=False)['values']
+        self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
+
+    def test_scripts_redis_commands(self):
+        con = self.get_client()
+        con.scriptstore("myscript{1}", "cpu", script_with_redis_commands, ["int_set_get", "func"])
+        con.scriptexecute("myscript{1}", "int_set_get", keys=["x{1}", "{1}"], args=["3"], outputs=["y{1}"])
+        values = con.tensorget("y{1}", as_numpy=False)
+        self.assertTrue(np.allclose(values["values"], [3]))
+
+        con.tensorset("mytensor1{1}", [40], dtype="float")
+        con.tensorset("mytensor2{1}", [10], dtype="float")
+        con.tensorset("mytensor3{1}", [1], dtype="float")
+        con.scriptexecute("myscript{1}", "func",
+                          keys=["key{1}"],
+                          inputs=["mytensor1{1}", "mytensor2{1}", "mytensor3{1}"],
+                          args=["3"],
+                          outputs=["my_output{1}"])
+        values = con.tensorget("my_output{1}", as_numpy=False)
+        self.assertTrue(np.allclose(values["values"], [54]))
+        self.assertIsNone(con.get("key{1}"))
 
     def test_run_onnxml_model(self):
         mlmodel_path = os.path.join(MODEL_DIR, "boston.onnx")
@@ -428,11 +532,14 @@ class ClientTestCase(RedisAITestBase):
         tflmodel = load_model(model_path)
         con = self.get_client()
         con.modelstore("tfl_model", "tflite", "cpu", tflmodel)
-        img = np.random.random((1, 1, 28, 28)).astype(np.float)
+
+        input_path = os.path.join(TENSOR_DIR, "one.raw")
+        with open(input_path, 'rb') as f:
+            img = np.frombuffer(f.read(), dtype=np.float32)
         con.tensorset("img", img)
         con.modelexecute("tfl_model", ["img"], ["output1", "output2"])
         output = con.tensorget("output1")
-        self.assertTrue(np.allclose(output, [8]))
+        self.assertEqual(output, [1])
 
     # AI.MODELRUN is deprecated by AI.MODELEXECUTE
     def test_deprecated_modelrun(self):
