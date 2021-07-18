@@ -16,7 +16,7 @@ class Dag:
         self.enable_postprocess = True
         if load is None and persist is None and routing is None:
             raise RuntimeError(
-                "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
+                "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain"
                 "at least one out of LOAD, PERSIST, ROUTING parameters"
             )
         if readonly:

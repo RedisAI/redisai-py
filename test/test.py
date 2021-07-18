@@ -85,6 +85,7 @@ def ensemble(output0, output1):
     return (output0 + output1) * 0.5
 """
 
+
 class RedisAITestBase(TestCase):
     def setUp(self):
         super().setUp()
@@ -653,13 +654,13 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         script_name = 'imagenet_script:{1}'
         model_name = 'imagenet_model:{1}'
-        
+
         img = load_image()
         model_path = os.path.join(MODEL_DIR, "resnet50.pb")
         model = load_model(model_path)
         con.scriptset(script_name, 'cpu', data_processing_script)
         con.modelstore(model_name, 'TF', 'cpu', model, inputs='images', outputs='output')
-        
+
         dag = con.dag(persist='output:{1}')
         dag.tensorset('image:{1}', tensor=img, shape=(img.shape[1], img.shape[0]), dtype='UINT8')
         dag.scriptexecute(script_name, 'pre_process_3ch', inputs='image:{1}', outputs='temp_key1')
@@ -720,7 +721,7 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(RuntimeError) as e:
             con.dag()
         self.assertEqual(str(e.exception),
-                         "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
+                         "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain"
                          "at least one out of LOAD, PERSIST, ROUTING parameters")
 
         dag = con.dag(load="wrongkey")
