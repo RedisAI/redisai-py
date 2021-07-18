@@ -767,7 +767,6 @@ class Client(StrictRedis):
         >>> con.scriptexecute('myscript', 'bar', inputs=['a', 'b'], outputs=['c'])
         'OK'
         >>> con.scriptexecute('myscript{tag}', 'addn',
-        >>>                   keys=['{tag}'],
         >>>                   inputs=['mytensor1{tag}', 'mytensor2{tag}', 'mytensor3{tag}'],
         >>>                   args=['5.0'],
         >>>                   outputs=['result{tag}'])

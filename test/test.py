@@ -409,7 +409,10 @@ class ClientTestCase(RedisAITestBase):
             con.scriptstore("test", "cpu", script, entry_points=None)
         self.assertEqual(str(e.exception), "Missing required arguments for script store command")
         self.assertRaises(ValueError, con.scriptstore, "test", "cpu", script=None, entry_points="bar")
-        self.assertRaises(ResponseError, con.scriptstore, "ket", "cpu", "return 1", "f")
+        with self.assertRaises(ResponseError) as e:
+            con.scriptstore("test", "cpu", "return 1", "f")
+        self.assertEqual(str(e.exception),
+                         "expected def but found 'return' here:   File \"<string>\", line 1 return 1 ~~~~~~ <--- HERE ")
 
     def test_scripts_execute(self):
         con = self.get_client()
@@ -417,7 +420,9 @@ class ClientTestCase(RedisAITestBase):
         with self.assertRaises(ValueError) as e:
             con.scriptexecute("test", function=None, keys=None, inputs=None)
         self.assertEqual(str(e.exception), "Missing required arguments for script execute command")
-        self.assertRaises(ResponseError, con.scriptexecute, "test", "bar", keys=["a", "c"], inputs=["a"], outputs=["c"])
+        with self.assertRaises(ResponseError) as e:
+            con.scriptexecute("test", "bar", inputs=["a"], outputs=["c"])
+        self.assertEqual(str(e.exception), "script key is empty")
 
         con.scriptstore("test", "cpu", script, "bar")
         con.tensorset("a", (2, 3), dtype="float")
@@ -439,13 +444,12 @@ class ClientTestCase(RedisAITestBase):
         con.scriptstore("myscript{1}", "cpu", script, ["bar", "bar_variadic"], "version1")
         con.tensorset("a{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        con.scriptexecute("myscript{1}", "bar", keys=["{1}"], inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+        con.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
         values = con.tensorget("c{1}", as_numpy=False)
         self.assertTrue(np.allclose(values["values"], [4.0, 6.0, 4.0, 6.0]))
 
         con.tensorset("b1{1}", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.scriptexecute("myscript{1}", 'bar_variadic',
-                          keys=["{1}"],
                           inputs=["a{1}", "b1{1}", "b{1}"],
                           outputs=["c{1}"])
 
