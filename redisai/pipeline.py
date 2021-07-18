@@ -1,5 +1,5 @@
 from functools import partial
-from typing import AnyStr, Union, Sequence
+from typing import AnyStr, Sequence, Union
 
 import numpy as np
 

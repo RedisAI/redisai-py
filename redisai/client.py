@@ -532,13 +532,14 @@ class Client(StrictRedis):
         self, key: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]], tag: AnyStr = None
     ) -> str:
         """
-        Set the script to RedisAI. Action similar to scriptset. The difference is that in
-        scriptstore you must specify entry points for your script. RedisAI uses the TorchScript
-        engine to execute the script. So the script should have only TorchScript supported
-        constructs. That being said, it's important to mention that using redisai script
-        to do post processing or pre processing for a Tensorflow (or any other backend)
-        is completely valid. For more details about TorchScript and supported ops,
-        checkout TorchScript documentation.
+        Set the script to RedisAI. The difference from scriptset is that in scriptstore
+        you must specify entry points within your script. These functions must have specific
+        signature: 'def entry_point(tensors: List[Tensor], keys: List[str], args: List[str])'.
+        RedisAI uses the TorchScript engine to execute the script. So the script should
+        have only TorchScript supported constructs. That being said, it's important to
+        mention that using redisai script to do post processing or pre processing for a
+        Tensorflow (or any other backend) is completely valid. For more details about
+        TorchScript and supported ops, checkout TorchScript documentation.
 
         Parameters
         ----------
@@ -550,10 +551,13 @@ class Client(StrictRedis):
         script : str
             Script itself, as a Python string
         entry_points : Union[str, Sequence[str]]
-            A list of entry points to be used in the script. Each entry point should have
-            the signature of 'def entry_point(tensors: List[Tensor], keys: List[str], args: List[str])'
+            A list of functions in the script that may serve as entry point for the
+            execution. Each entry point must have the specify signature:
+            def entry_point(tensors: List[Tensor], keys: List[str], args: List[str]))
+            Note that the script may contain additional helper functions that doesn't
+            have to follow this signature.
         tag : AnyStr
-            Any string that will be saved in RedisAI as tag for the model
+            Any string that will be saved in RedisAI as tag for the script
 
         Returns
         -------
@@ -570,14 +574,20 @@ class Client(StrictRedis):
 
         Example
         -------
-        >>> script = open(scriptpath).read()
-        >>> con.scriptsore('ket', 'cpu', script, 'func')
+        >>> script = r'''
+        >>> def bar(tensors: List[Tensor], keys: List[str], args: List[str]):
+        >>>     a = tensors[0]
+        >>>     b = tensors[1]
+        >>>     return a + b
+        >>>'''
+        >>> con.scriptstore('ket', 'cpu', script, 'bar')
         'OK'
         """
         args = builder.scriptstore(key, device, script, entry_points, tag)
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptstore(res)
 
+    @deprecated(version="1.2.0", reason="Use scriptstore instead")
     def scriptset(
         self, key: AnyStr, device: str, script: str, tag: AnyStr = None
     ) -> str:
@@ -716,12 +726,13 @@ class Client(StrictRedis):
         function: str,
         keys: Union[AnyStr, Sequence[AnyStr]] = None,
         inputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        input_args: Union[AnyStr, Sequence[AnyStr]] = None,
+        args: Union[AnyStr, Sequence[AnyStr]] = None,
         outputs: Union[AnyStr, Sequence[AnyStr]] = None,
         timeout: int = None,
     ) -> str:
         """
-        Run an already set script. Similar to modelexecute
+        Run an already set script. Similar to modelexecute.
+        Must specify keys or inputs.
 
         Parameters
         ----------
@@ -730,18 +741,17 @@ class Client(StrictRedis):
         function : str
             Name of the function in the ``script``
         keys : Union[AnyStr, Sequence[AnyStr]]
-            Either a squence of key names that the script will access before, during and
-            after its execution, or a tag which all those keys share.
-            These keys will be used as the 'keys' for the scriptexecute function.
+            Denotes the list of Redis key names that the script will access to
+            during its execution, for both read and/or write operations.
         inputs : Union[AnyStr, Sequence[AnyStr]]
-            keys or inputs must be provided (or both).
-            These inputs will be used as the 'tensors' for the scriptexecute function.
-        input_args : Union[AnyStr, Sequence[AnyStr]]
-            These inputs will be used as the 'args' for the scriptexecute function.
-            They can be integers, floats or strings.
+            Denotes the input tensors list.
+        args : Union[AnyStr, Sequence[AnyStr]]
+            Denotes the list of additional arguments that a user can send to the
+            script. All args are sent as strings, but can be casted to other types
+            supported by torch script, such as int, or float.
         outputs : Union[AnyStr, List[AnyStr]]
-            keys on which the outputs to be saved. If those keys exist already, scriptexecute
-            will overwrite them with new values.
+            Denotes the output tensors keys' list. If those keys exist already,
+            scriptexecute will overwrite them with new values.
         timeout : int
             The max number on milisecinds that may pass before the request is prossced
             (meaning that the result will not be computed after that time and TIMEDOUT
@@ -754,16 +764,16 @@ class Client(StrictRedis):
 
         Example
         -------
-        >>> con.scriptexecute('ket', 'bar', keys=['a', 'b', 'c'], inputs=['a', 'b'], outputs=['c'])
+        >>> con.scriptexecute('myscript', 'bar', inputs=['a', 'b'], outputs=['c'])
         'OK'
         >>> con.scriptexecute('myscript{tag}', 'addn',
         >>>                   keys=['{tag}'],
         >>>                   inputs=['mytensor1{tag}', 'mytensor2{tag}', 'mytensor3{tag}'],
-        >>>                   input_args=['5.0'],
+        >>>                   args=['5.0'],
         >>>                   outputs=['result{tag}'])
         'OK'
         """
-        args = builder.scriptexecute(key, function, keys, inputs, input_args, outputs, timeout)
+        args = builder.scriptexecute(key, function, keys, inputs, args, outputs, timeout)
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptexecute(res)
 

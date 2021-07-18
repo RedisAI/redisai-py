@@ -213,6 +213,8 @@ def scriptstore(
 ) -> Sequence:
     if device.upper() not in utils.allowed_devices:
         raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
+    if name is None or script is None or entry_points is None:
+        raise ValueError("Missing required arguments for script store command")
     args = ["AI.SCRIPTSTORE", name, device]
     if tag:
         args += ["TAG", tag]
@@ -275,15 +277,10 @@ def scriptexecute(
 ) -> Sequence:
     if name is None or function is None or (keys is None and inputs is None):
         raise ValueError("Missing required arguments for script execute command")
-    args = [
-        "AI.SCRIPTEXECUTE",
-        name,
-        function,
-        "KEYS",
-        len(utils.listify(keys)),
-        *utils.listify(keys),
-    ]
+    args = ["AI.SCRIPTEXECUTE", name, function]
 
+    if keys is not None:
+        args += ["KEYS", len(utils.listify(keys)), *utils.listify(keys)]
     if inputs is not None:
         args += ["INPUTS", len(utils.listify(inputs)), *utils.listify(inputs)]
     if input_args is not None:
