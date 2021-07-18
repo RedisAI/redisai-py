@@ -674,7 +674,7 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
 
-        dag = con.dag(load="a", routing="b")
+        dag = con.dag(load="a", routing="b", timeout=10)
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
@@ -719,8 +719,11 @@ class DagTestCase(RedisAITestBase):
 
     def test_dagexecute_without_load_and_persist(self):
         con = self.get_client()
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(RuntimeError) as e:
             con.dag()
+        self.assertEqual(str(e.exception),
+                         "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
+                         "at least one out of LOAD, PERSIST, ROUTING parameters")
 
         dag = con.dag(load="wrongkey")
         with self.assertRaises(ResponseError):
