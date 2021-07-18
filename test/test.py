@@ -649,7 +649,6 @@ class DagTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(result_outside_dag, result.pop()))
         self.assertEqual(expected, result)
 
-    """
     def test_dagexecute_modelexecute_with_scriptexecute(self):
         con = self.get_client()
         script_name = 'imagenet_script:{1}'
@@ -663,18 +662,17 @@ class DagTestCase(RedisAITestBase):
         
         dag = con.dag(persist='output:{1}')
         dag.tensorset('image:{1}', tensor=img, shape=(img.shape[1], img.shape[0]), dtype='UINT8')
-        dag.scriptexecute(script_name, 'pre_process_3ch', keys=[], inputs='image:{1}', outputs='temp_key1')
+        dag.scriptexecute(script_name, 'pre_process_3ch', inputs='image:{1}', outputs='temp_key1')
         dag.modelexecute(model_name, inputs='temp_key1', outputs='temp_key2')
-        dag.scriptexecute(script_name, 'post_process', keys=[], inputs='temp_key2', outputs='output:{1}')
+        dag.scriptexecute(script_name, 'post_process', inputs='temp_key2', outputs='output:{1}')
         ret = dag.execute()
         self.assertEqual(['OK', 'OK', 'OK', 'OK'], ret)
-    """
 
     def test_dagexecute_with_load(self):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
 
-        dag = con.dag(load="a", routing="b")
+        dag = con.dag(load="a", routing="b", timeout=10)
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
@@ -719,8 +717,11 @@ class DagTestCase(RedisAITestBase):
 
     def test_dagexecute_without_load_and_persist(self):
         con = self.get_client()
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(RuntimeError) as e:
             con.dag()
+        self.assertEqual(str(e.exception),
+                         "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
+                         "at least one out of LOAD, PERSIST, ROUTING parameters")
 
         dag = con.dag(load="wrongkey")
         with self.assertRaises(ResponseError):
