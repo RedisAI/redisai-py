@@ -674,7 +674,7 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
 
-        dag = con.dag(load="a", keys="b")
+        dag = con.dag(load="a", routing="b")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
@@ -726,7 +726,7 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(ResponseError):
             dag.tensorget("wrongkey").execute()
 
-        dag = con.dag(keys=["a", "b", "output"])
+        dag = con.dag(persist="output")
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
@@ -763,10 +763,11 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(RuntimeError):
             con.dag(load=["a", "b"], persist="output", readonly=True)
         dag = con.dag(load=["a", "b"], readonly=True)
-        """
-        with self.assertRaises(RuntimeError):
-            dag.scriptexecute()
-        """
+
+        with self.assertRaises(RuntimeError) as e:
+            dag.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+        self.assertEqual(str(e.exception), "AI.SCRIPTEXECUTE cannot be used in readonly mode")
+
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
         result = dag.execute()

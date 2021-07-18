@@ -11,13 +11,13 @@ processor = Processor()
 
 
 class Dag:
-    def __init__(self, load, persist, keys, timeout, executor, readonly=False, postprocess=True):
+    def __init__(self, load, persist, routing, timeout, executor, readonly=False, postprocess=True):
         self.result_processors = []
         self.enable_postprocess = True
-        if load is None and persist is None and keys is None:
+        if load is None and persist is None and routing is None:
             raise RuntimeError(
                 "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain" 
-                "at least one out of LOAD, PERSIST, KEYS parameters"
+                "at least one out of LOAD, PERSIST, ROUTING parameters"
             )
         if readonly:
             if persist:
@@ -38,11 +38,8 @@ class Dag:
                 self.commands += ["PERSIST", 1, persist]
             else:
                 self.commands += ["PERSIST", len(persist), *persist]
-        if keys is not None:
-            if not isinstance(keys, (list, tuple)):
-                self.commands += ["KEYS", 1, keys]
-            else:
-                self.commands += ["KEYS", len(keys), *keys]
+        if routing is not None:
+            self.commands += ["ROUTING", routing]
         if timeout is not None:
             self.commands += ["TIMEOUT", timeout]
 
@@ -108,15 +105,16 @@ class Dag:
         self,
         key: AnyStr,
         function: str,
-        keys: Union[AnyStr, Sequence[AnyStr]],
-        inputs: Union[AnyStr, Sequence[Union[AnyStr, Sequence[AnyStr]]]] = None,
+        keys: Union[AnyStr, Sequence[AnyStr]] = None,
+        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
+        args: Union[AnyStr, Sequence[AnyStr]] = None,
         outputs: Union[AnyStr, List[AnyStr]] = None,
     ) -> Any:
         if self.readonly:
             raise RuntimeError(
                 "AI.SCRIPTEXECUTE cannot be used in readonly mode"
             )
-        args = builder.scriptexecute(key, function, keys, inputs, outputs, None)
+        args = builder.scriptexecute(key, function, keys, inputs, args, outputs, None)
         self.commands.extend(args)
         self.commands.append("|>")
         self.result_processors.append(bytes.decode)

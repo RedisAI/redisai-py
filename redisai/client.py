@@ -73,7 +73,7 @@ class Client(StrictRedis):
         self,
         load: Sequence = None,
         persist: Sequence = None,
-        keys: Sequence = None,
+        routing: AnyStr = None,
         timeout: int = None,
         readonly: bool = False
     ) -> "Dag":
@@ -84,9 +84,17 @@ class Client(StrictRedis):
         Parameters
         ----------
         load : Union[AnyStr, List[AnyStr]]
-            Load the list of given values from the keyspace to DAG scope
+            Denotes the input tensors keys' list
         persist : Union[AnyStr, List[AnyStr]]
-            Write the list of given key, values to the keyspace from DAG scope
+            Denotes the output tensors keys' list
+        routing : AnyStr
+            Denotes a key to be used in the DAG or a tag that will assist in routing the dag
+            execution command to the right shard. Redis will verify that all potential key
+            accesses are done to within the target shard.
+        timeout : int
+            The max number on milisecinds that may pass before the request is prossced
+            (meaning that the result will not be computed after that time and TIMEDOUT
+            is returned in that case
         readonly : bool
             If True, it triggers AI.DAGRUN_RO, the read only DAG which cannot write (PERSIST) to
             the keyspace. But since it can't write, it can execute on replicas
@@ -111,7 +119,7 @@ class Client(StrictRedis):
         >>> result = dag.tensorset(**akwargs).modelrun(**bkwargs).tensorget(**ckwargs).run()
         """
         return Dag(
-            load, persist, keys, timeout, self.execute_command, readonly, self.enable_postprocess
+            load, persist, routing, timeout, self.execute_command, readonly, self.enable_postprocess
         )
 
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
