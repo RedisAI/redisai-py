@@ -70,8 +70,10 @@ decoding_functions = (
     "modelrun",
     "tensorset",
     "scriptset",
+    "scriptstore",
     "scriptdel",
     "scriptrun",
+    "scriptexecute",
     "inforeset",
 )
 for fn in decoding_functions:
