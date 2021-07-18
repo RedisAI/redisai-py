@@ -724,8 +724,9 @@ class DagTestCase(RedisAITestBase):
                          "at least one out of LOAD, PERSIST, ROUTING parameters")
 
         dag = con.dag(load="wrongkey")
-        with self.assertRaises(ResponseError):
+        with self.assertRaises(ResponseError) as e:
             dag.tensorget("wrongkey").execute()
+        self.assertEqual(str(e.exception), "tensor key is empty or in a different shard")
 
         dag = con.dag(persist="output")
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
