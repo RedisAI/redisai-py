@@ -118,9 +118,7 @@ class Client(StrictRedis):
         >>> # You can even chain the operations
         >>> result = dag.tensorset(**akwargs).modelrun(**bkwargs).tensorget(**ckwargs).run()
         """
-        return Dag(
-            load, persist, routing, timeout, self.execute_command, readonly, self.enable_postprocess
-        )
+        return Dag(load, persist, routing, timeout, self.execute_command, readonly)
 
     def loadbackend(self, identifier: AnyStr, path: AnyStr) -> str:
         """
