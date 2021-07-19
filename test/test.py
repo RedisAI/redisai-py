@@ -759,12 +759,6 @@ class DagTestCase(RedisAITestBase):
 
     def test_dagexecute_without_load_and_persist(self):
         con = self.get_client()
-        with self.assertRaises(RuntimeError) as e:
-            con.dag()
-        self.assertEqual(str(e.exception),
-                         "AI.DAGEXECUTE and AI.DAGEXECUTE_RO commands must contain"
-                         "at least one out of LOAD, PERSIST, ROUTING parameters")
-
         dag = con.dag(load="wrongkey")
         with self.assertRaises(ResponseError) as e:
             dag.tensorget("wrongkey").execute()
