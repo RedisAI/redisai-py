@@ -41,6 +41,7 @@ tox-poetry = "^0.3.0"
 bandit = "^1.7.0"
 pylint = "^2.8.2"
 vulture = "^2.3"
+skimage = "^0.18.0"
 
 [tool.poetry.urls]
 url = "https://redisai.io"
