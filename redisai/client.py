@@ -84,9 +84,10 @@ class Client(StrictRedis):
         Parameters
         ----------
         load : Union[AnyStr, List[AnyStr]]
-            Denotes the input tensors keys' list
+            Load the list of given values from the keyspace to DAG scope
         persist : Union[AnyStr, List[AnyStr]]
-            Denotes the output tensors keys' list
+            For each tensor key in the given list, write its values to the keyspace from
+            DAG scope after the DAG execution is finished.
         routing : AnyStr
             Denotes a key to be used in the DAG or a tag that will assist in routing the dag
             execution command to the right shard. Redis will verify that all potential key
@@ -94,7 +95,7 @@ class Client(StrictRedis):
         timeout : int
             The max number on milisecinds that may pass before the request is prossced
             (meaning that the result will not be computed after that time and TIMEDOUT
-            is returned in that case
+            is returned in that case)
         readonly : bool
             If True, it triggers AI.DAGRUN_RO, the read only DAG which cannot write (PERSIST) to
             the keyspace. But since it can't write, it can execute on replicas

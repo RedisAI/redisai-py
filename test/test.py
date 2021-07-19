@@ -71,15 +71,15 @@ def func(tensors: List[Tensor], keys: List[str], args: List[str]):
 """
 
 data_processing_script = r"""
-def pre_process_3ch(image):
-    return image.float().div(255).unsqueeze(0)
+def pre_process_3ch(tensors: List[Tensor], keys: List[str], args: List[str]):
+    return tensors[0].float().div(255).unsqueeze(0)
 
 def pre_process_4ch(image):
     return image.float().div(255)[:,:,:-1].contiguous().unsqueeze(0)
 
-def post_process(output):
+def post_process(tensors: List[Tensor], keys: List[str], args: List[str]):
     # tf model has 1001 classes, hence negative 1
-    return output.max(1)[1] - 1
+    return tensors[0].max(1)[1] - 1
 
 def ensemble(output0, output1):
     return (output0 + output1) * 0.5
@@ -658,7 +658,7 @@ class DagTestCase(RedisAITestBase):
         img = load_image()
         model_path = os.path.join(MODEL_DIR, "resnet50.pb")
         model = load_model(model_path)
-        con.scriptset(script_name, 'cpu', data_processing_script)
+        con.scriptstore(script_name, 'cpu', data_processing_script, entry_points=['post_process', 'pre_process_3ch'])
         con.modelstore(model_name, 'TF', 'cpu', model, inputs='images', outputs='output')
 
         dag = con.dag(persist='output:{1}')
@@ -673,7 +673,7 @@ class DagTestCase(RedisAITestBase):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
 
-        dag = con.dag(load="a", routing="b", timeout=10)
+        dag = con.dag(load="a")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
