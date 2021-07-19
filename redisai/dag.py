@@ -114,7 +114,7 @@ class Dag:
     ) -> Any:
         if self.deprecatedDagrunMode:
             raise RuntimeError(
-                "You sre using deprecated version of DAG, that does not supports MODELEXECUTE."
+                "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
                 "The new version requires as least one of LOAD, PERSIST and ROUTING."
             )
         args = builder.modelexecute(key, inputs, outputs, None)
@@ -138,7 +138,7 @@ class Dag:
             )
         if self.deprecatedDagrunMode:
             raise RuntimeError(
-                "You sre using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
+                "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
                 "The new version requires as least one of LOAD, PERSIST and ROUTING."
             )
         args = builder.scriptexecute(key, function, keys, inputs, args, outputs, None)

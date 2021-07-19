@@ -653,12 +653,12 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(RuntimeError) as e:
             dag.modelexecute("pt_model", ["a", "b"], ["output"])
         self.assertEqual(str(e.exception),
-                         "You sre using deprecated version of DAG, that does not supports MODELEXECUTE."
+                         "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
                          "The new version requires as least one of LOAD, PERSIST and ROUTING.")
         with self.assertRaises(RuntimeError) as e:
             dag.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
         self.assertEqual(str(e.exception),
-                         "You sre using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
+                         "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
                          "The new version requires as least one of LOAD, PERSIST and ROUTING.")
         dag.modelrun("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
