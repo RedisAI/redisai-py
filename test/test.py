@@ -1,6 +1,6 @@
 import os.path
 import sys
-import warnings
+
 from io import StringIO
 from unittest import TestCase
 from skimage.io import imread
@@ -11,6 +11,7 @@ from ml2rt import load_model
 from redis.exceptions import ResponseError
 
 from redisai import Client
+import warnings
 
 DEBUG = False
 tf_graph = "graph.pb"
