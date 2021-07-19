@@ -644,7 +644,7 @@ class DagTestCase(RedisAITestBase):
         # test the warning of using dagrun
         with warnings.catch_warnings(record=True) as w:
             dag = con.dag()
-        self.assertEqual(str(w[0].message),
+        self.assertEqual(str(w[-1].message),
                          "When not specifying one of LOAD, PERSIST and ROUTING,"
                          "you use deprecated AI.DAGRUN or AI.DAGRUN_RO")
 
