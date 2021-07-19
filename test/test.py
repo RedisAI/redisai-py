@@ -1,5 +1,6 @@
 import os.path
 import sys
+import warnings
 from io import StringIO
 from unittest import TestCase
 from skimage.io import imread
@@ -637,6 +638,44 @@ class DagTestCase(RedisAITestBase):
 
     def test_deprecated_dugrun(self):
         con = self.get_client()
+
+        # test the warning of using dagrun
+        with warnings.catch_warnings(record=True) as w:
+            dag = con.dag()
+        self.assertEqual(str(w[0].message),
+                         "When not specifying one of LOAD, PERSIST and ROUTING,"
+                         "you use deprecated AI.DAGRUN or AI.DAGRUN_RO")
+
+        # test that dagrun and model run hadn't been broken
+        dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        # can't use modelexecute or scriptexecute when using DAGRUN
+        with self.assertRaises(RuntimeError) as e:
+            dag.modelexecute("pt_model", ["a", "b"], ["output"])
+        self.assertEqual(str(e.exception),
+                         "You sre using deprecated version of DAG, that does not supports MODELEXECUTE."
+                         "The new version requires as least one of LOAD, PERSIST and ROUTING.")
+        with self.assertRaises(RuntimeError) as e:
+            dag.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+        self.assertEqual(str(e.exception),
+                         "You sre using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
+                         "The new version requires as least one of LOAD, PERSIST and ROUTING.")
+        dag.modelrun("pt_model", ["a", "b"], ["output"])
+        dag.tensorget("output")
+        result = dag.run()
+        expected = [
+            "OK",
+            "OK",
+            "OK",
+            np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32),
+        ]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_deprecated_modelrun_and_run(self):
+        # use modelrun&run method but perform modelexecute&dagexecute behind the scene
+        con = self.get_client()
+
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag = con.dag(load=["a", "b"], persist="output")
