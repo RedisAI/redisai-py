@@ -27,8 +27,8 @@ class Dag:
 
         if self.deprecatedDagrunMode:
             # Throw warning about using deprecated dagrun
-            warnings.warn("When not specifying one of LOAD, PERSIST and ROUTING,"
-                          "you use deprecated AI.DAGRUN or AI.DAGRUN_RO", DeprecationWarning)
+            warnings.warn("Creating Dag without any of LOAD, PERSIST and ROUTING arguments"
+                          "is allowed only in deprecated AI.DAGRUN or AI.DAGRUN_RO commands", DeprecationWarning)
             # Use dagrun
             if readonly:
                 self.commands = ["AI.DAGRUN_RO"]
@@ -114,8 +114,8 @@ class Dag:
     ) -> Any:
         if self.deprecatedDagrunMode:
             raise RuntimeError(
-                "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
-                "The new version requires as least one of LOAD, PERSIST and ROUTING."
+                "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                "arguments when constructing the Dag"
             )
         args = builder.modelexecute(key, inputs, outputs, None)
         self.commands.extend(args)
@@ -138,8 +138,8 @@ class Dag:
             )
         if self.deprecatedDagrunMode:
             raise RuntimeError(
-                "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
-                "The new version requires as least one of LOAD, PERSIST and ROUTING."
+                "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                "arguments when constructing the Dag"
             )
         args = builder.scriptexecute(key, function, keys, inputs, args, outputs, None)
         self.commands.extend(args)

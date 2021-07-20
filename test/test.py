@@ -647,8 +647,8 @@ class DagTestCase(RedisAITestBase):
             dag = con.dag()
         self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
         self.assertEqual(str(w[-1].message),
-                         "When not specifying one of LOAD, PERSIST and ROUTING,"
-                         "you use deprecated AI.DAGRUN or AI.DAGRUN_RO")
+                         "Creating Dag without any of LOAD, PERSIST and ROUTING arguments"
+                         "is allowed only in deprecated AI.DAGRUN or AI.DAGRUN_RO commands")
 
         # test that dagrun and model run hadn't been broken
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
@@ -657,13 +657,13 @@ class DagTestCase(RedisAITestBase):
         with self.assertRaises(RuntimeError) as e:
             dag.modelexecute("pt_model", ["a", "b"], ["output"])
         self.assertEqual(str(e.exception),
-                         "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
-                         "The new version requires as least one of LOAD, PERSIST and ROUTING.")
+                         "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                         "arguments when constructing the Dag")
         with self.assertRaises(RuntimeError) as e:
             dag.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
         self.assertEqual(str(e.exception),
-                         "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
-                         "The new version requires as least one of LOAD, PERSIST and ROUTING.")
+                         "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                         "arguments when constructing the Dag")
         dag.modelrun("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
         result = dag.run()
