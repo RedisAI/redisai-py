@@ -1,7 +1,11 @@
 import os.path
 import sys
+import warnings
+
 from io import StringIO
 from unittest import TestCase
+from skimage.io import imread
+from skimage.transform import resize
 
 import numpy as np
 from ml2rt import load_model
@@ -9,9 +13,11 @@ from redis.exceptions import ResponseError
 
 from redisai import Client
 
+
 DEBUG = False
 tf_graph = "graph.pb"
 torch_graph = "pt-minimal.pt"
+dog_img = "dog.jpg"
 
 
 class Capturing(list):
@@ -65,6 +71,15 @@ def func(tensors: List[Tensor], keys: List[str], args: List[str]):
     b = redis_string_int_to_tensor(redis.execute("GET", keys[0]))
     redis.execute("DEL", keys[0])
     return b + a
+"""
+
+data_processing_script = r"""
+def pre_process_3ch(tensors: List[Tensor], keys: List[str], args: List[str]):
+    return tensors[0].float().div(255).unsqueeze(0)
+
+def post_process(tensors: List[Tensor], keys: List[str], args: List[str]):
+    # tf model has 1001 classes, hence negative 1
+    return tensors[0].max(1)[1] - 1
 """
 
 
@@ -599,6 +614,16 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(["AI.TENSORSET x FLOAT 4 VALUES 2 3 4 5"], output)
 
 
+def load_image():
+    image_filename = os.path.join(MODEL_DIR, dog_img)
+    img_height, img_width = 224, 224
+
+    img = imread(image_filename)
+    img = resize(img, (img_height, img_width), mode='constant', anti_aliasing=True)
+    img = img.astype(np.uint8)
+    return img
+
+
 class DagTestCase(RedisAITestBase):
     def setUp(self):
         super().setUp()
@@ -607,63 +632,34 @@ class DagTestCase(RedisAITestBase):
         ptmodel = load_model(model_path)
         con.modelstore("pt_model", "torch", "cpu", ptmodel, tag="v7.0")
 
-    def test_dagrun_with_load(self):
-        con = self.get_client()
-        con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-
-        dag = con.dag(load="a")
-        dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        dag.modelrun("pt_model", ["a", "b"], ["output"])
-        dag.tensorget("output")
-        result = dag.run()
-        expected = ["OK", "OK", np.array(
-            [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
-        self.assertTrue(np.allclose(expected.pop(), result.pop()))
-        self.assertEqual(expected, result)
-        self.assertRaises(ResponseError, con.tensorget, "b")
-
-    def test_dagrun_with_persist(self):
+    def test_deprecated_dugrun(self):
         con = self.get_client()
 
-        with self.assertRaises(ResponseError):
-            dag = con.dag(persist="wrongkey")
-            dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float").run()
+        # test the warning of using dagrun
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("default")
+            dag = con.dag()
+        self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+        self.assertEqual(str(w[-1].message),
+                         "Creating Dag without any of LOAD, PERSIST and ROUTING arguments"
+                         "is allowed only in deprecated AI.DAGRUN or AI.DAGRUN_RO commands")
 
-        dag = con.dag(persist=["b"])
+        # test that dagrun and model run hadn't been broken
         dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        dag.tensorget("b")
-        result = dag.run()
-        b = con.tensorget("b")
-        self.assertTrue(np.allclose(b, result[-1]))
-        self.assertEqual(b.dtype, np.float32)
-        self.assertEqual(len(result), 3)
-
-    def test_dagrun_calling_on_return(self):
-        con = self.get_client()
-        con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        result = (
-            con.dag(load="a")
-            .tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-            .modelrun("pt_model", ["a", "b"], ["output"])
-            .tensorget("output")
-            .run()
-        )
-        expected = ["OK", "OK", np.array(
-            [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
-        self.assertTrue(np.allclose(expected.pop(), result.pop()))
-        self.assertEqual(expected, result)
-
-    def test_dagrun_without_load_and_persist(self):
-        con = self.get_client()
-
-        dag = con.dag(load="wrongkey")
-        with self.assertRaises(ResponseError):
-            dag.tensorget("wrongkey").run()
-
-        dag = con.dag()
-        dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
-        dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        # can't use modelexecute or scriptexecute when using DAGRUN
+        with self.assertRaises(RuntimeError) as e:
+            dag.modelexecute("pt_model", ["a", "b"], ["output"])
+        self.assertEqual(str(e.exception),
+                         "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
+                         "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                         "arguments when constructing the Dag")
+        with self.assertRaises(RuntimeError) as e:
+            dag.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+        self.assertEqual(str(e.exception),
+                         "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
+                         "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                         "arguments when constructing the Dag")
         dag.modelrun("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
         result = dag.run()
@@ -676,8 +672,10 @@ class DagTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
         self.assertEqual(expected, result)
 
-    def test_dagrun_with_load_and_persist(self):
+    def test_deprecated_modelrun_and_run(self):
+        # use modelrun&run method but perform modelexecute&dagexecute behind the scene
         con = self.get_client()
+
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag = con.dag(load=["a", "b"], persist="output")
@@ -691,16 +689,140 @@ class DagTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(result_outside_dag, result.pop()))
         self.assertEqual(expected, result)
 
-    def test_dagrunRO(self):
+    def test_dagexecute_with_scriptexecute_redis_commands(self):
+        con = self.get_client()
+        con.scriptstore("myscript{1}", "cpu", script_with_redis_commands, "func")
+        dag = con.dag(persist='my_output{1}', routing='{1}')
+        dag.tensorset("mytensor1{1}", [40], dtype="float")
+        dag.tensorset("mytensor2{1}", [10], dtype="float")
+        dag.tensorset("mytensor3{1}", [1], dtype="float")
+        dag.scriptexecute("myscript{1}", "func",
+                          keys=["key{1}"],
+                          inputs=["mytensor1{1}", "mytensor2{1}", "mytensor3{1}"],
+                          args=["3"],
+                          outputs=["my_output{1}"])
+        dag.execute()
+        values = con.tensorget("my_output{1}", as_numpy=False)
+        self.assertTrue(np.allclose(values["values"], [54]))
+
+    def test_dagexecute_modelexecute_with_scriptexecute(self):
+        con = self.get_client()
+        script_name = 'imagenet_script:{1}'
+        model_name = 'imagenet_model:{1}'
+
+        img = load_image()
+        model_path = os.path.join(MODEL_DIR, "resnet50.pb")
+        model = load_model(model_path)
+        con.scriptstore(script_name, 'cpu', data_processing_script, entry_points=['post_process', 'pre_process_3ch'])
+        con.modelstore(model_name, 'TF', 'cpu', model, inputs='images', outputs='output')
+
+        dag = con.dag(persist='output:{1}')
+        dag.tensorset('image:{1}', tensor=img, shape=(img.shape[1], img.shape[0]), dtype='UINT8')
+        dag.scriptexecute(script_name, 'pre_process_3ch', inputs='image:{1}', outputs='temp_key1')
+        dag.modelexecute(model_name, inputs='temp_key1', outputs='temp_key2')
+        dag.scriptexecute(script_name, 'post_process', inputs='temp_key2', outputs='output:{1}')
+        ret = dag.execute()
+        self.assertEqual(['OK', 'OK', 'OK', 'OK'], ret)
+
+    def test_dagexecute_with_load(self):
+        con = self.get_client()
+        con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+
+        dag = con.dag(load="a")
+        dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
+        dag.tensorget("output")
+        result = dag.execute()
+        expected = ["OK", "OK", np.array(
+            [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+        self.assertRaises(ResponseError, con.tensorget, "b")
+
+    def test_dagexecute_with_persist(self):
+        con = self.get_client()
+
+        with self.assertRaises(ResponseError):
+            dag = con.dag(persist="wrongkey")
+            dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float").execute()
+
+        dag = con.dag(persist=["b"])
+        dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag.tensorget("b")
+        result = dag.execute()
+        b = con.tensorget("b")
+        self.assertTrue(np.allclose(b, result[-1]))
+        self.assertEqual(b.dtype, np.float32)
+        self.assertEqual(len(result), 3)
+
+    def test_dagexecute_calling_on_return(self):
+        con = self.get_client()
+        con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        result = (
+            con.dag(load="a")
+            .tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+            .modelexecute("pt_model", ["a", "b"], ["output"])
+            .tensorget("output")
+            .execute()
+        )
+        expected = ["OK", "OK", np.array(
+            [[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_dagexecute_without_load_and_persist(self):
+        con = self.get_client()
+        dag = con.dag(load="wrongkey")
+        with self.assertRaises(ResponseError) as e:
+            dag.tensorget("wrongkey").execute()
+        self.assertEqual(str(e.exception), "tensor key is empty or in a different shard")
+
+        dag = con.dag(persist="output")
+        dag.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
+        dag.tensorget("output")
+        result = dag.execute()
+        expected = [
+            "OK",
+            "OK",
+            "OK",
+            np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32),
+        ]
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_dagexecute_with_load_and_persist(self):
+        con = self.get_client()
+        con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
+        dag = con.dag(load=["a", "b"], persist="output")
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
+        dag.tensorget("output")
+        result = dag.execute()
+        expected = ["OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
+        result_outside_dag = con.tensorget("output")
+        self.assertTrue(np.allclose(expected.pop(), result.pop()))
+        result = dag.execute()
+        self.assertTrue(np.allclose(result_outside_dag, result.pop()))
+        self.assertEqual(expected, result)
+
+    def test_dagexecuteRO(self):
         con = self.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         with self.assertRaises(RuntimeError):
             con.dag(load=["a", "b"], persist="output", readonly=True)
         dag = con.dag(load=["a", "b"], readonly=True)
-        dag.modelrun("pt_model", ["a", "b"], ["output"])
+
+        with self.assertRaises(RuntimeError) as e:
+            dag.scriptexecute("myscript{1}", "bar", inputs=["a{1}", "b{1}"], outputs=["c{1}"])
+        self.assertEqual(str(e.exception), "AI.SCRIPTEXECUTE cannot be used in readonly mode")
+
+        dag.modelexecute("pt_model", ["a", "b"], ["output"])
         dag.tensorget("output")
-        result = dag.run()
+        result = dag.execute()
         expected = ["OK", np.array([[4.0, 6.0], [4.0, 6.0]], dtype=np.float32)]
         self.assertTrue(np.allclose(expected.pop(), result.pop()))
 

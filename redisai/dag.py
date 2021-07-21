@@ -5,36 +5,57 @@ import numpy as np
 
 from redisai import command_builder as builder
 from redisai.postprocessor import Processor
+from deprecated import deprecated
+import warnings
 
 processor = Processor()
 
 
 class Dag:
-    def __init__(self, load, persist, executor, readonly=False, postprocess=True):
+    def __init__(self, load, persist, routing, timeout, executor, readonly=False):
         self.result_processors = []
-        self.enable_postprocess = postprocess
-        if readonly:
-            if persist:
-                raise RuntimeError(
-                    "READONLY requests cannot write (duh!) and should not "
-                    "have PERSISTing values"
-                )
-            self.commands = ["AI.DAGRUN_RO"]
+        self.enable_postprocess = True
+        self.deprecatedDagrunMode = load is None and persist is None and routing is None
+        self.readonly = readonly
+        self.executor = executor
+
+        if readonly and persist:
+            raise RuntimeError(
+                "READONLY requests cannot write (duh!) and should not "
+                "have PERSISTing values"
+            )
+
+        if self.deprecatedDagrunMode:
+            # Throw warning about using deprecated dagrun
+            warnings.warn("Creating Dag without any of LOAD, PERSIST and ROUTING arguments"
+                          "is allowed only in deprecated AI.DAGRUN or AI.DAGRUN_RO commands", DeprecationWarning)
+            # Use dagrun
+            if readonly:
+                self.commands = ["AI.DAGRUN_RO"]
+            else:
+                self.commands = ["AI.DAGRUN"]
         else:
-            self.commands = ["AI.DAGRUN"]
-        if load:
+            # Use dagexecute
+            if readonly:
+                self.commands = ["AI.DAGEXECUTE_RO"]
+            else:
+                self.commands = ["AI.DAGEXECUTE"]
+        if load is not None:
             if not isinstance(load, (list, tuple)):
                 self.commands += ["LOAD", 1, load]
             else:
                 self.commands += ["LOAD", len(load), *load]
-        if persist:
+        if persist is not None:
             if not isinstance(persist, (list, tuple)):
-                self.commands += ["PERSIST", 1, persist, "|>"]
+                self.commands += ["PERSIST", 1, persist]
             else:
-                self.commands += ["PERSIST", len(persist), *persist, "|>"]
-        else:
-            self.commands.append("|>")
-        self.executor = executor
+                self.commands += ["PERSIST", len(persist), *persist]
+        if routing is not None:
+            self.commands += ["ROUTING", routing]
+        if timeout is not None:
+            self.commands += ["TIMEOUT", timeout]
+
+        self.commands.append("|>")
 
     def tensorset(
         self,
@@ -69,20 +90,71 @@ class Dag:
         )
         return self
 
+    @deprecated(version="1.2.0", reason="Use modelexecute instead")
     def modelrun(
+            self,
+            key: AnyStr,
+            inputs: Union[AnyStr, List[AnyStr]],
+            outputs: Union[AnyStr, List[AnyStr]],
+    ) -> Any:
+        if self.deprecatedDagrunMode:
+            args = builder.modelrun(key, inputs, outputs)
+            self.commands.extend(args)
+            self.commands.append("|>")
+            self.result_processors.append(bytes.decode)
+            return self
+        else:
+            return self.modelexecute(key, inputs, outputs)
+
+    def modelexecute(
         self,
         key: AnyStr,
         inputs: Union[AnyStr, List[AnyStr]],
         outputs: Union[AnyStr, List[AnyStr]],
     ) -> Any:
-        args = builder.modelrun(key, inputs, outputs)
+        if self.deprecatedDagrunMode:
+            raise RuntimeError(
+                "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
+                "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                "arguments when constructing the Dag"
+            )
+        args = builder.modelexecute(key, inputs, outputs, None)
         self.commands.extend(args)
         self.commands.append("|>")
         self.result_processors.append(bytes.decode)
         return self
 
+    def scriptexecute(
+        self,
+        key: AnyStr,
+        function: str,
+        keys: Union[AnyStr, Sequence[AnyStr]] = None,
+        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
+        args: Union[AnyStr, Sequence[AnyStr]] = None,
+        outputs: Union[AnyStr, List[AnyStr]] = None,
+    ) -> Any:
+        if self.readonly:
+            raise RuntimeError(
+                "AI.SCRIPTEXECUTE cannot be used in readonly mode"
+            )
+        if self.deprecatedDagrunMode:
+            raise RuntimeError(
+                "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
+                "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
+                "arguments when constructing the Dag"
+            )
+        args = builder.scriptexecute(key, function, keys, inputs, args, outputs, None)
+        self.commands.extend(args)
+        self.commands.append("|>")
+        self.result_processors.append(bytes.decode)
+        return self
+
+    @deprecated(version="1.2.0", reason="Use execute instead")
     def run(self):
-        commands = self.commands[:-1]  # removing the last "|>
+        return self.execute()
+
+    def execute(self):
+        commands = self.commands[:-1]  # removing the last "|>"
         results = self.executor(*commands)
         if self.enable_postprocess:
             out = []
