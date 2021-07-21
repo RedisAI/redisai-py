@@ -693,6 +693,22 @@ class DagTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(result_outside_dag, result.pop()))
         self.assertEqual(expected, result)
 
+    def test_dagexecute_with_scriptexecute_redis_commands(self):
+        con = self.get_client()
+        con.scriptstore("myscript{1}", "cpu", script_with_redis_commands, "func")
+        dag = con.dag(persist='my_output{1}', routing='{1}')
+        dag.tensorset("mytensor1{1}", [40], dtype="float")
+        dag.tensorset("mytensor2{1}", [10], dtype="float")
+        dag.tensorset("mytensor3{1}", [1], dtype="float")
+        dag.scriptexecute("myscript{1}", "func",
+                          keys=["key{1}"],
+                          inputs=["mytensor1{1}", "mytensor2{1}", "mytensor3{1}"],
+                          args=["3"],
+                          outputs=["my_output{1}"])
+        dag.execute()
+        values = con.tensorget("my_output{1}", as_numpy=False)
+        self.assertTrue(np.allclose(values["values"], [54]))
+
     def test_dagexecute_modelexecute_with_scriptexecute(self):
         con = self.get_client()
         script_name = 'imagenet_script:{1}'
