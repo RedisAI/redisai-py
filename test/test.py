@@ -77,15 +77,9 @@ data_processing_script = r"""
 def pre_process_3ch(tensors: List[Tensor], keys: List[str], args: List[str]):
     return tensors[0].float().div(255).unsqueeze(0)
 
-def pre_process_4ch(image):
-    return image.float().div(255)[:,:,:-1].contiguous().unsqueeze(0)
-
 def post_process(tensors: List[Tensor], keys: List[str], args: List[str]):
     # tf model has 1001 classes, hence negative 1
     return tensors[0].max(1)[1] - 1
-
-def ensemble(output0, output1):
-    return (output0 + output1) * 0.5
 """
 
 
