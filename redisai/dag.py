@@ -114,6 +114,7 @@ class Dag:
     ) -> Any:
         if self.deprecatedDagrunMode:
             raise RuntimeError(
+                "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
                 "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
                 "arguments when constructing the Dag"
             )
@@ -138,6 +139,7 @@ class Dag:
             )
         if self.deprecatedDagrunMode:
             raise RuntimeError(
+                "You are using deprecated version of DAG, that does not supports SCRIPTEXECUTE."
                 "The new version requires giving at least one of LOAD, PERSIST and ROUTING"
                 "arguments when constructing the Dag"
             )
