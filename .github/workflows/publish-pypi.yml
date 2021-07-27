@@ -25,6 +25,10 @@ jobs:
           key: version
           value: "${{ steps.get_version.outputs.VERSION }}"
 
+      - name: Spit out the toml
+        run: |
+          cat pyproject.toml
+
       - name: Set up Python 3.7
         uses: actions/setup-python@v1
         with:
