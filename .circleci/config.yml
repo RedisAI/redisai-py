@@ -59,6 +59,7 @@ commands:
           name: lint
           command: |
             tox -e linters
+          no_output_timeout: 30m
 
       - run:
           name: run tests
