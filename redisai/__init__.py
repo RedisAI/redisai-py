@@ -1,3 +1,4 @@
 from .client import Client  # noqa
+import pkg_resources
 
-__version__ = "1.0.2"
+__version__ = pkg_resources.get_distribution('redisai').version
