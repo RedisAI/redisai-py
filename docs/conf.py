@@ -10,15 +10,21 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.intersphinx",
     "sphinx_rtd_theme",
+    'sphinx_search.extension',  # search tools
+    'sphinx.ext.autodoc',
 ]
+pygments_style = "sphinx"
+autoapi_type = 'python'
 templates_path = ["_templates"]
 source_suffix = ".rst"
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "sphinx_rtd_theme"
+html_logo = 'images/logo.png'
 html_use_smartypants = True
 html_last_updated_fmt = "%b %d, %Y"
 html_split_index = False
+html_static_path = ['_static']
 html_sidebars = {
     "**": ["searchbox.html", "globaltoc.html", "sourcelink.html"],
 }
