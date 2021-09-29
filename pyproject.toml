@@ -2,7 +2,7 @@
 name = "redisai"
 version = "1.0.2"
 description = "RedisAI Python Client"
-authors = ["RedisLabs <oss@redislabs.com>"]
+authors = ["Redis <oss@.com>"]
 license = "BSD-3-Clause"
 readme = "README.rst"
 
@@ -52,7 +52,7 @@ scikit-image = "==0.16.2"
 "Project URL" = "https://redisai.io"
 Repository = "https://github.com/RedisAI/redisai-py"
 Documentation = "https://redisai.readhtedocs.io"
-Homepage = "https://oss.redislabs.com/redisai/"
+Homepage = "https://oss..com/redisai/"
 Tracker = "https://github.com/RedisAI/redisai-py/issues"
 
 [build-system]
