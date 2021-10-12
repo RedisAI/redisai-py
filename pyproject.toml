@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = ">=3.6,<3.10"
 redis = ">=2.10"
 hiredis = ">=0.20"
 numpy = ">=1.19.5"
