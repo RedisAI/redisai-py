@@ -78,7 +78,7 @@ jobs:
     parameters:
       python_version:
         type: string
-        default: "latest"
+        default: "3.9.4"
     docker:
       - image: circleci/python:<<parameters.python_version>>
       - image: redislabs/redisai:edge-cpu-bionic
