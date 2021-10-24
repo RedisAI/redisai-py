@@ -48,6 +48,7 @@ commands:
       - run:
           name: install tox dependencies
           command: |
+            pip install --upgrade pip  # numpy build issue on python 3.10
             pip install --user --quiet -r .circleci/circle_requirements.txt
 
       - run:
