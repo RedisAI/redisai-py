@@ -115,6 +115,7 @@ class ClientTestCase(RedisAITestBase):
         result = con.tensorget("x", as_numpy=False)
         self.assertEqual([True, True, False, False], result["values"])
         self.assertEqual([2, 2], result["shape"])
+        self.assertEqual("BOOL", result["dtype"])
 
         with self.assertRaises(TypeError):
             con.tensorset("x", (2, 3, 4, 5), dtype="wrongtype", shape=(2, 2))
@@ -149,10 +150,11 @@ class ClientTestCase(RedisAITestBase):
         values = con.tensorget("x")
         self.assertEqual(values.dtype, np.float64)
 
-        input_array = np.array([1, 0], dtype='bool')
+        input_array = np.array([True, False])
         con.tensorset("x", input_array)
         values = con.tensorget("x")
-        self.assertEqual(values.dtype, 'bool')
+        self.assertEqual(values.dtype, "bool")
+        self.assertTrue(np.array_equal(values , [True, False]))
 
         input_array = np.array([2, 3])
         con.tensorset("x", input_array)
