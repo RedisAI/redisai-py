@@ -154,7 +154,7 @@ class ClientTestCase(RedisAITestBase):
         con.tensorset("x", input_array)
         values = con.tensorget("x")
         self.assertEqual(values.dtype, "bool")
-        self.assertTrue(np.array_equal(values , [True, False]))
+        self.assertTrue(np.array_equal(values, [True, False]))
 
         input_array = np.array([2, 3])
         con.tensorset("x", input_array)
