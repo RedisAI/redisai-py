@@ -14,6 +14,7 @@ dtype_dict = {
     "uint16": "UINT16",
     "uint32": "UINT32",
     "uint64": "UINT64",
+    "bool": "BOOL",
 }
 
 allowed_devices = {"CPU", "GPU"}
