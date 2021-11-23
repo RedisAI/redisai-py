@@ -24,10 +24,10 @@ allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
-    try:# TODO: uncomment when support for numpy string tensors is added
-        #if tensor.dtype.num == np.dtype("str").num:
+    try:  # TODO: uncomment when support for numpy string tensors is added
+        # if tensor.dtype.num == np.dtype("str").num:
         #    dtype = dtype_dict["str"]
-        #else:
+        # else:
         dtype = dtype_dict[str(tensor.dtype)]
     except KeyError:
         raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")

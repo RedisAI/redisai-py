@@ -117,6 +117,12 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual([2, 2], result["shape"])
         self.assertEqual("BOOL", result["dtype"])
 
+        con.tensorset("x", (12, 'a', 'G', 'four'), dtype="str", shape=(2, 2))
+        result = con.tensorget("x", as_numpy=False)
+        self.assertEqual(['12', 'a', 'G', 'four'], result["values"])
+        self.assertEqual([2, 2], result["shape"])
+        self.assertEqual("STRING", result["dtype"])
+
         with self.assertRaises(TypeError):
             con.tensorset("x", (2, 3, 4, 5), dtype="wrongtype", shape=(2, 2))
         con.tensorset("x", (2, 3, 4, 5), dtype="int8", shape=(2, 2))
