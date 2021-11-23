@@ -173,7 +173,10 @@ def tensorset(
         args = ["AI.TENSORSET", key, dtype, *shape, "BLOB", blob]
     elif isinstance(tensor, (list, tuple)):
         try:
-            dtype = utils.dtype_dict[dtype.lower()]
+            if np.dtype(dtype).num == np.dtype("str").num:
+                dtype = utils.dtype_dict["str"]
+            else:
+                dtype = utils.dtype_dict[dtype.lower()]
         except KeyError:
             raise TypeError(
                 f"``{dtype}`` is not supported by RedisAI. Currently "

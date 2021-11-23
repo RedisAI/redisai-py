@@ -15,6 +15,7 @@ dtype_dict = {
     "uint32": "UINT32",
     "uint64": "UINT64",
     "bool": "BOOL",
+    "str": "STRING",
 }
 
 allowed_devices = {"CPU", "GPU"}
@@ -23,7 +24,10 @@ allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
-    try:
+    try:# TODO: uncomment when support for numpy string tensors is added
+        #if tensor.dtype.num == np.dtype("str").num:
+        #    dtype = dtype_dict["str"]
+        #else:
         dtype = dtype_dict[str(tensor.dtype)]
     except KeyError:
         raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
@@ -38,7 +42,9 @@ def blob2numpy(
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
     mm = {"FLOAT": "float32", "DOUBLE": "float64"}
     dtype = mm.get(dtype, dtype.lower())
-    if mutable:
+    if dtype == 'string':
+        a = np.array(value.decode().split('\0')[:-1], dtype='str')
+    elif mutable:
         a = np.fromstring(value, dtype=dtype)
     else:
         a = np.frombuffer(value, dtype=dtype)
@@ -71,6 +77,21 @@ def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
             recursive_bytetransform(obj, target)
         else:
             arr[ix] = target(obj)
+    return arr
+
+
+def recursive_bytetransform_str(arr: List[AnyStr]) -> list:
+    """
+    Recurse value, replacing each element of b'' with the appropriate string element.
+
+    Function returns the same array after inplace operation which updates `arr`
+    """
+    for ix in range(len(arr)):
+        obj = arr[ix]
+        if isinstance(obj, list):
+            recursive_bytetransform_str(obj)
+        else:
+            arr[ix] = obj.decode()
     return arr
 
 
