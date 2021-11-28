@@ -21,12 +21,14 @@ dtype_dict = {
 allowed_devices = {"CPU", "GPU"}
 allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
+
 def numpyString2blob(tensor: np.ndarray) -> str:
     """Convert the numpy string input from user to RedisAI blob."""
     blob = ''
     for i in range(tensor.size):
         blob += tensor.flat[i] + "\0"
     return blob
+
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
