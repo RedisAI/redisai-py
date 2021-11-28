@@ -35,7 +35,7 @@ def numpy2blob(tensor: np.ndarray) -> tuple:
     try:
         if tensor.dtype.num == np.dtype("str").num:
             dtype = dtype_dict["str"]
-            blob = numpyString2blob(tensor)
+            blob = numpy_string2blob(tensor)
         else:
             dtype = dtype_dict[str(tensor.dtype)]
             blob = tensor.tobytes()
