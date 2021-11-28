@@ -21,18 +21,25 @@ dtype_dict = {
 allowed_devices = {"CPU", "GPU"}
 allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
+def numpyString2blob(tensor: np.ndarray) -> str:
+    """Convert the numpy string input from user to RedisAI blob."""
+    blob = ''
+    for i in range(tensor.size):
+        blob += tensor.flat[i] + "\0"
+    return blob
 
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
-    try:  # TODO: uncomment when support for numpy string tensors is added
-        # if tensor.dtype.num == np.dtype("str").num:
-        #    dtype = dtype_dict["str"]
-        # else:
-        dtype = dtype_dict[str(tensor.dtype)]
+    try:
+        if tensor.dtype.num == np.dtype("str").num:
+            dtype = dtype_dict["str"]
+            blob = numpyString2blob(tensor)
+        else:
+            dtype = dtype_dict[str(tensor.dtype)]
+            blob = tensor.tobytes()
     except KeyError:
         raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
     shape = tensor.shape
-    blob = bytes(tensor.data)
     return dtype, shape, blob
 
 
