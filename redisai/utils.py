@@ -22,7 +22,7 @@ allowed_devices = {"CPU", "GPU"}
 allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
 
-def numpyString2blob(tensor: np.ndarray) -> str:
+def numpy_string2blob(tensor: np.ndarray) -> str:
     """Convert the numpy string input from user to RedisAI blob."""
     blob = ''
     for i in range(tensor.size):

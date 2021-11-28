@@ -167,7 +167,6 @@ class ClientTestCase(RedisAITestBase):
         values = con.tensorget("x")
         self.assertEqual(values.dtype.num, np.dtype("str").num)
         self.assertTrue(np.array_equal(values, [['a', 'bb'], ["⚓⚓⚓", "d♻d♻"]]))
-        values = con.tensorget("x", as_numpy=False)
 
         input_array = np.array([2, 3])
         con.tensorset("x", input_array)
