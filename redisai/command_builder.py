@@ -25,7 +25,10 @@ def modelstore(
 ) -> Sequence:
     if name is None:
         raise ValueError("Model name was not given")
-    if device.upper() not in utils.allowed_devices:
+
+    # device format should be: "CPU | GPU [:<num>]"
+    device_type, device_ind = device.split(":")[0], device.split(":")[1] if len(device.split(":")) > 1 else None
+    if device_type.upper() not in utils.allowed_devices:
         raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
     if backend.upper() not in utils.allowed_backends:
         raise ValueError(f"Backend not allowed. Use any from {utils.allowed_backends}")
