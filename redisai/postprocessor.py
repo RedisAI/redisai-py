@@ -43,10 +43,11 @@ class Processor:
             )
         else:
             if rai_result["dtype"] == "STRING":
-                utils.recursive_bytetransform_str(rai_result["values"])
+                def target(b):
+                    return b.decode()
             else:
                 target = float if rai_result["dtype"] in ("FLOAT", "DOUBLE") else int
-                utils.recursive_bytetransform(rai_result["values"], target)
+            utils.recursive_bytetransform(rai_result["values"], target)
             return rai_result
 
     @staticmethod

@@ -22,20 +22,12 @@ allowed_devices = {"CPU", "GPU"}
 allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 
 
-def numpy_string2blob(tensor: np.ndarray) -> str:
-    """Convert the numpy string input from user to RedisAI blob."""
-    blob = ''
-    for i in range(tensor.size):
-        blob += tensor.flat[i] + "\0"
-    return blob
-
-
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
     try:
         if tensor.dtype.num == np.dtype("str").num:
             dtype = dtype_dict["str"]
-            blob = numpy_string2blob(tensor)
+            blob = "".join([string + "\0" for string in tensor.flat])
         else:
             dtype = dtype_dict[str(tensor.dtype)]
             blob = tensor.tobytes()
@@ -86,21 +78,6 @@ def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
             recursive_bytetransform(obj, target)
         else:
             arr[ix] = target(obj)
-    return arr
-
-
-def recursive_bytetransform_str(arr: List[AnyStr]) -> list:
-    """
-    Recurse value, replacing each element of b'' with the appropriate string element.
-
-    Function returns the same array after inplace operation which updates `arr`
-    """
-    for ix in range(len(arr)):
-        obj = arr[ix]
-        if isinstance(obj, list):
-            recursive_bytetransform_str(obj)
-        else:
-            arr[ix] = obj.decode()
     return arr
 
 

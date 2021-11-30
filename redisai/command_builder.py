@@ -173,6 +173,8 @@ def tensorset(
         args = ["AI.TENSORSET", key, dtype, *shape, "BLOB", blob]
     elif isinstance(tensor, (list, tuple)):
         try:
+            # Numpy 'str' dtype has many different names regarding maximal length in the tensor and more,
+            # but the all share the 'num' attribute. This is a way to check if a dtype is a kind of string.
             if np.dtype(dtype).num == np.dtype("str").num:
                 dtype = utils.dtype_dict["str"]
             else:
