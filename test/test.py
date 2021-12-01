@@ -342,7 +342,7 @@ class ClientTestCase(RedisAITestBase):
         ret = con.modelexecute("m", ["a", "b"], "out")
         self.assertEqual(ret, "OK")
 
-    def test_nonasciichar(self):
+    def test_non_ascii_char(self):
         nonascii = "ĉ"
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
@@ -362,6 +362,21 @@ class ClientTestCase(RedisAITestBase):
             "m" + nonascii, ["a" + nonascii, "b"], ["c" + nonascii])
         tensor = con.tensorget("c" + nonascii)
         self.assertTrue((np.allclose(tensor, [4.0, 9.0])))
+
+    def test_device_with_id(self):
+        model_path = os.path.join(MODEL_DIR, tf_graph)
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        ret = con.modelstore(
+            "m",
+            "tf",
+            "cpu:1",
+            model_pb,
+            inputs=["a", "b"],
+            outputs=["mul"],
+            tag="v1.0",
+        )
+        self.assertEqual('OK', ret)
 
     def test_run_tf_model(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)
