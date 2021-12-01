@@ -15,6 +15,7 @@ dtype_dict = {
     "uint32": "UINT32",
     "uint64": "UINT64",
     "bool": "BOOL",
+    "str": "STRING",
 }
 
 allowed_devices = {"CPU", "GPU"}
@@ -24,11 +25,15 @@ allowed_backends = {"TF", "TFLITE", "TORCH", "ONNX"}
 def numpy2blob(tensor: np.ndarray) -> tuple:
     """Convert the numpy input from user to `Tensor`."""
     try:
-        dtype = dtype_dict[str(tensor.dtype)]
+        if tensor.dtype.num == np.dtype("str").num:
+            dtype = dtype_dict["str"]
+            blob = "".join([string + "\0" for string in tensor.flat])
+        else:
+            dtype = dtype_dict[str(tensor.dtype)]
+            blob = tensor.tobytes()
     except KeyError:
         raise TypeError(f"RedisAI doesn't support tensors of type {tensor.dtype}")
     shape = tensor.shape
-    blob = bytes(tensor.data)
     return dtype, shape, blob
 
 
@@ -38,7 +43,9 @@ def blob2numpy(
     """Convert `BLOB` result from RedisAI to `np.ndarray`."""
     mm = {"FLOAT": "float32", "DOUBLE": "float64"}
     dtype = mm.get(dtype, dtype.lower())
-    if mutable:
+    if dtype == 'string':
+        a = np.array(value.decode().split('\0')[:-1], dtype='str')
+    elif mutable:
         a = np.fromstring(value, dtype=dtype)
     else:
         a = np.frombuffer(value, dtype=dtype)
