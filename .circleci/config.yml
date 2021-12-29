@@ -49,6 +49,7 @@ commands:
       - run:
           name: build sdist and wheels
           command: |
+            poetry config virtualenvs.create false
             poetry build
 
       - run:
