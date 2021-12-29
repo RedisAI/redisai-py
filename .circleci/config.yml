@@ -112,7 +112,6 @@ python-versions: &python-versions
         - "3.7.9"
         - "3.8.9"
         - "3.9.4"
-        - "3.10.1"
           # - "latest"  # numpy wheel does not build in python 3.10. disabling for now.
 
 workflows:
