@@ -43,12 +43,13 @@ commands:
       - run:
           name: install tox dependencies
           command: |
-            pip install --user --upgrade pip virtualenv
-            pip install --user --quiet -r .circleci/circle_requirements.txt
+            sudo pip install --upgrade pip virtualenv
+            sudo pip install --quiet -r .circleci/circle_requirements.txt
 
       - run:
           name: build sdist and wheels
           command: |
+            poetry config virtualenvs.create false
             poetry build
 
       - run:
@@ -67,7 +68,7 @@ jobs:
     parameters:
       python_version:
         type: string
-        default: "3.9.4"
+        default: "3.9.9"
     docker:
       - image: circleci/python:<<parameters.python_version>>
       - image: redislabs/redisai:edge-cpu-bionic
