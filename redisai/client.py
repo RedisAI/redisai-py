@@ -1,6 +1,6 @@
 import warnings
 from functools import wraps
-from typing import AnyStr, ByteString, List, Sequence, Union
+from typing import AnyStr, ByteString, List, Optional, Sequence, Union
 
 import numpy as np
 from deprecated import deprecated
@@ -47,7 +47,7 @@ class Client(StrictRedis):
             self.execute_command = enable_debug(super().execute_command)
         self.enable_postprocess = enable_postprocess
 
-    def pipeline(self, transaction: bool = True, shard_hint: bool = None) -> "Pipeline":
+    def pipeline(self, transaction: bool = True, shard_hint: Optional[bool] = None) -> "Pipeline":
         """
         It follows the same pipeline implementation of native redis client but enables it
         to access redisai operation as well. This function is experimental in the
@@ -71,10 +71,10 @@ class Client(StrictRedis):
 
     def dag(
         self,
-        load: Sequence = None,
-        persist: Sequence = None,
-        routing: AnyStr = None,
-        timeout: int = None,
+        load: Optional[Sequence] = None,
+        persist: Optional[Sequence] = None,
+        routing: Optional[AnyStr] = None,
+        timeout: Optional[int] = None,
         readonly: bool = False
     ) -> "Dag":
         """
@@ -154,12 +154,12 @@ class Client(StrictRedis):
         backend: str,
         device: str,
         data: ByteString,
-        batch: int = None,
-        minbatch: int = None,
-        minbatchtimeout: int = None,
-        tag: AnyStr = None,
-        inputs: Union[AnyStr, List[AnyStr]] = None,
-        outputs: Union[AnyStr, List[AnyStr]] = None,
+        batch: Optional[int] = None,
+        minbatch: Optional[int] = None,
+        minbatchtimeout: Optional[int] = None,
+        tag: Optional[AnyStr] = None,
+        inputs: Optional[Union[AnyStr, List[AnyStr]]] = None,
+        outputs: Optional[Union[AnyStr, List[AnyStr]]] = None,
     ) -> str:
         """
         Set the model on provided key.
@@ -231,11 +231,11 @@ class Client(StrictRedis):
         backend: str,
         device: str,
         data: ByteString,
-        batch: int = None,
-        minbatch: int = None,
-        tag: AnyStr = None,
-        inputs: Union[AnyStr, List[AnyStr]] = None,
-        outputs: Union[AnyStr, List[AnyStr]] = None,
+        batch: Optional[int] = None,
+        minbatch: Optional[int] = None,
+        tag: Optional[AnyStr] = None,
+        inputs: Optional[Union[AnyStr, List[AnyStr]]] = None,
+        outputs: Optional[Union[AnyStr, List[AnyStr]]] = None,
     ) -> str:
         """
         Set the model on provided key.
@@ -287,7 +287,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelset(res)
 
-    def modelget(self, key: AnyStr, meta_only=False) -> dict:
+    def modelget(self, key: AnyStr, meta_only: Optional[bool] = False) -> dict:
         """
         Fetch the model details and the model blob back from RedisAI
 
@@ -341,7 +341,7 @@ class Client(StrictRedis):
         key: AnyStr,
         inputs: Union[AnyStr, List[AnyStr]],
         outputs: Union[AnyStr, List[AnyStr]],
-        timeout: int = None,
+        timeout: Optional[int] = None,
     ) -> str:
         """
         Run the model using input(s) which are already in the scope and are associated
@@ -459,8 +459,8 @@ class Client(StrictRedis):
         self,
         key: AnyStr,
         tensor: Union[np.ndarray, list, tuple],
-        shape: Sequence[int] = None,
-        dtype: str = None,
+        shape: Optional[Sequence[int]] = None,
+        dtype: Optional[str] = None,
     ) -> str:
         """
         Set the tensor to a key in RedisAI
@@ -541,7 +541,7 @@ class Client(StrictRedis):
         )
 
     def scriptstore(
-        self, key: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]], tag: AnyStr = None
+        self, key: AnyStr, device: str, script: str, entry_points: Union[str, Sequence[str]], tag: Optional[AnyStr] = None
     ) -> str:
         """
         Set the script to RedisAI. The difference from scriptset is that in scriptstore
@@ -601,7 +601,7 @@ class Client(StrictRedis):
 
     @deprecated(version="1.2.0", reason="Use scriptstore instead")
     def scriptset(
-        self, key: AnyStr, device: str, script: str, tag: AnyStr = None
+        self, key: AnyStr, device: str, script: str, tag: Optional[AnyStr] = None
     ) -> str:
         """
         Set the script to RedisAI. Action similar to Modelset. RedisAI uses the TorchScript
@@ -646,7 +646,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptset(res)
 
-    def scriptget(self, key: AnyStr, meta_only=False) -> dict:
+    def scriptget(self, key: AnyStr, meta_only: Optional[bool] = False) -> dict:
         """
         Get the saved script from RedisAI. Operation similar to model get
 
@@ -736,11 +736,11 @@ class Client(StrictRedis):
         self,
         key: AnyStr,
         function: str,
-        keys: Union[AnyStr, Sequence[AnyStr]] = None,
-        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        args: Union[AnyStr, Sequence[AnyStr]] = None,
-        outputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        timeout: int = None,
+        keys: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        inputs: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        args: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        outputs: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        timeout: Optional[int] = None,
     ) -> str:
         """
         Run an already set script. Similar to modelexecute.
