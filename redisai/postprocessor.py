@@ -1,4 +1,6 @@
-from typing import Any
+from typing import Any, Dict, List, Union, overload
+
+import numpy as np
 
 from . import utils
 
@@ -19,13 +21,35 @@ class Processor:
     def modelscan(res):
         return utils.recursive_bytetransform(res, lambda x: x.decode())
 
+    @overload
     @staticmethod
-    def tensorget(res: Any, as_numpy: bool, as_numpy_mutable: bool, meta_only: bool):
+    def tensorget(res: List[Any], as_numpy: bool = True, as_numpy_mutable: bool = False, meta_only: bool = False) -> np.ndarray:
+        ...
+
+    @overload
+    @staticmethod
+    def tensorget(res: List[Any], as_numpy: bool = False, as_numpy_mutable: bool = True, meta_only: bool = False) -> np.ndarray:
+        ...
+
+    @overload
+    @staticmethod
+    def tensorget(res: List[Any], as_numpy: bool = False, as_numpy_mutable: bool = False, meta_only: bool = True) -> Dict[str, Any]:
+        ...
+
+    @overload
+    @staticmethod
+    def tensorget(res: List[Any]) -> List[Any]:
+        ...
+
+    @staticmethod
+    def tensorget(res: List[Any], as_numpy: bool = False, as_numpy_mutable: bool = False, meta_only: bool = False) -> Any:
         """Process the tensorget output.
 
         If ``as_numpy`` is True, it'll be converted to a numpy array. The required
         information such as datatype and shape must be in ``rai_result`` itself.
         """
+        if (as_numpy and as_numpy_mutable) or (as_numpy and meta_only) or (as_numpy_mutable and meta_only):
+            raise Exception("Only one parameter should be set to true")
         rai_result = utils.list2dict(res)
         if meta_only is True:
             return rai_result
