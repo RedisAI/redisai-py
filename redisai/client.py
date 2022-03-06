@@ -646,7 +646,7 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.scriptset(res)
 
-    def scriptget(self, key: AnyStr, meta_only: Optional[bool] = False) -> dict:
+    def scriptget(self, key: AnyStr, meta_only: bool = False) -> dict:
         """
         Get the saved script from RedisAI. Operation similar to model get
 
