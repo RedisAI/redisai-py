@@ -1,5 +1,5 @@
 from functools import partial
-from typing import AnyStr, Sequence, Union
+from typing import AnyStr, Optional, Sequence, Union
 
 import numpy as np
 import redis
@@ -33,8 +33,8 @@ class Pipeline(redis.client.Pipeline):
         self,
         key: AnyStr,
         tensor: Union[np.ndarray, list, tuple],
-        shape: Sequence[int] = None,
-        dtype: str = None,
+        shape: Optional[Sequence[int]] = None,
+        dtype: Optional[str] = None,
     ) -> str:
         args = builder.tensorset(key, tensor, shape, dtype)
         return self.execute_command(*args)

@@ -1,12 +1,12 @@
+import warnings
 from functools import partial
-from typing import Any, AnyStr, List, Sequence, Union
+from typing import Any, AnyStr, List, Optional, Sequence, Union
 
 import numpy as np
+from deprecated import deprecated
 
 from redisai import command_builder as builder
 from redisai.postprocessor import Processor
-from deprecated import deprecated
-import warnings
 
 processor = Processor()
 
@@ -61,8 +61,8 @@ class Dag:
         self,
         key: AnyStr,
         tensor: Union[np.ndarray, list, tuple],
-        shape: Sequence[int] = None,
-        dtype: str = None,
+        shape: Optional[Sequence[int]] = None,
+        dtype: Optional[str] = None,
     ) -> Any:
         args = builder.tensorset(key, tensor, shape, dtype)
         self.commands.extend(args)
@@ -128,10 +128,10 @@ class Dag:
         self,
         key: AnyStr,
         function: str,
-        keys: Union[AnyStr, Sequence[AnyStr]] = None,
-        inputs: Union[AnyStr, Sequence[AnyStr]] = None,
-        args: Union[AnyStr, Sequence[AnyStr]] = None,
-        outputs: Union[AnyStr, List[AnyStr]] = None,
+        keys: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        inputs: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        args: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
+        outputs: Optional[Union[AnyStr, List[AnyStr]]] = None,
     ) -> Any:
         if self.readonly:
             raise RuntimeError(

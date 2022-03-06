@@ -1,3 +1,5 @@
+from typing import Any
+
 from . import utils
 
 
@@ -18,7 +20,7 @@ class Processor:
         return utils.recursive_bytetransform(res, lambda x: x.decode())
 
     @staticmethod
-    def tensorget(res, as_numpy, as_numpy_mutable, meta_only):
+    def tensorget(res: Any, as_numpy: bool, as_numpy_mutable: bool, meta_only: bool):
         """Process the tensorget output.
 
         If ``as_numpy`` is True, it'll be converted to a numpy array. The required
