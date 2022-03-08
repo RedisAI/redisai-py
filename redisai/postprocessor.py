@@ -5,7 +5,7 @@ import numpy as np
 from . import utils
 
 
-def decoder(val):
+def _decoder(val):
     return val.decode()
 
 
@@ -13,33 +13,13 @@ class Processor:
     @staticmethod
     def modelget(res):
         resdict = utils.list2dict(res)
-        utils.recursive_bytetransform(resdict["inputs"], lambda x: x.decode())
-        utils.recursive_bytetransform(resdict["outputs"], lambda x: x.decode())
+        utils.recursive_bytetransform(resdict["inputs"], _decoder)
+        utils.recursive_bytetransform(resdict["outputs"], _decoder)
         return resdict
 
     @staticmethod
     def modelscan(res):
-        return utils.recursive_bytetransform(res, lambda x: x.decode())
-
-    @overload
-    @staticmethod
-    def tensorget(res: List[Any], as_numpy: bool = True, as_numpy_mutable: bool = False, meta_only: bool = False) -> np.ndarray:
-        ...
-
-    @overload
-    @staticmethod
-    def tensorget(res: List[Any], as_numpy: bool = False, as_numpy_mutable: bool = True, meta_only: bool = False) -> np.ndarray:
-        ...
-
-    @overload
-    @staticmethod
-    def tensorget(res: List[Any], as_numpy: bool = False, as_numpy_mutable: bool = False, meta_only: bool = True) -> Dict[str, Any]:
-        ...
-
-    @overload
-    @staticmethod
-    def tensorget(res: List[Any]) -> List[Any]:
-        ...
+        return utils.recursive_bytetransform(res, _decoder)
 
     @staticmethod
     def tensorget(res: List[Any], as_numpy: bool = False, as_numpy_mutable: bool = False, meta_only: bool = False) -> Any:
@@ -69,8 +49,7 @@ class Processor:
             )
         else:
             if rai_result["dtype"] == "STRING":
-                def target(b):
-                    return b.decode()
+                target = _decoder
             else:
                 target = float if rai_result["dtype"] in ("FLOAT", "DOUBLE") else int
             utils.recursive_bytetransform(rai_result["values"], target)
@@ -82,7 +61,7 @@ class Processor:
 
     @staticmethod
     def scriptscan(res):
-        return utils.recursive_bytetransform(res, lambda x: x.decode())
+        return utils.recursive_bytetransform(res, _decoder)
 
     @staticmethod
     def infoget(res):
@@ -90,7 +69,7 @@ class Processor:
 
 
 # These functions are only doing decoding on the output from redis
-decoder = staticmethod(decoder)
+decoder = staticmethod(_decoder)
 decoding_functions = (
     "loadbackend",
     "modelstore",

@@ -63,7 +63,7 @@ class Dag:
         tensor: Union[np.ndarray, list, tuple],
         shape: Optional[Sequence[int]] = None,
         dtype: Optional[str] = None,
-    ) -> Any:
+    ) -> "Dag":
         args = builder.tensorset(key, tensor, shape, dtype)
         self.commands.extend(args)
         self.commands.append("|>")
@@ -76,7 +76,7 @@ class Dag:
         as_numpy: bool = True,
         as_numpy_mutable: bool = False,
         meta_only: bool = False,
-    ) -> Any:
+    ) -> "Dag":
         args = builder.tensorget(key, as_numpy, as_numpy_mutable)
         self.commands.extend(args)
         self.commands.append("|>")
@@ -96,7 +96,7 @@ class Dag:
             key: AnyStr,
             inputs: Union[AnyStr, List[AnyStr]],
             outputs: Union[AnyStr, List[AnyStr]],
-    ) -> Any:
+    ) -> "Dag":
         if self.deprecatedDagrunMode:
             args = builder.modelrun(key, inputs, outputs)
             self.commands.extend(args)
@@ -111,7 +111,7 @@ class Dag:
         key: AnyStr,
         inputs: Union[AnyStr, List[AnyStr]],
         outputs: Union[AnyStr, List[AnyStr]],
-    ) -> Any:
+    ) -> "Dag":
         if self.deprecatedDagrunMode:
             raise RuntimeError(
                 "You are using deprecated version of DAG, that does not supports MODELEXECUTE."
@@ -132,7 +132,7 @@ class Dag:
         inputs: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
         args: Optional[Union[AnyStr, Sequence[AnyStr]]] = None,
         outputs: Optional[Union[AnyStr, List[AnyStr]]] = None,
-    ) -> Any:
+    ) -> "Dag":
         if self.readonly:
             raise RuntimeError(
                 "AI.SCRIPTEXECUTE cannot be used in readonly mode"
@@ -150,10 +150,10 @@ class Dag:
         return self
 
     @deprecated(version="1.2.0", reason="Use execute instead")
-    def run(self):
+    def run(self) -> List[str]:
         return self.execute()
 
-    def execute(self):
+    def execute(self) -> List[str]:
         commands = self.commands[:-1]  # removing the last "|>"
         results = self.executor(*commands)
         if self.enable_postprocess:

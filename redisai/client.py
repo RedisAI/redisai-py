@@ -1,6 +1,7 @@
 import warnings
 from functools import wraps
-from typing import AnyStr, ByteString, List, Optional, Sequence, Union
+from typing import (Any, AnyStr, ByteString, Dict, List, Optional, Sequence,
+                    Union, overload)
 
 import numpy as np
 from deprecated import deprecated
@@ -493,13 +494,29 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.tensorset(res)
 
+    @overload
+    def tensorget(self, key: AnyStr, as_numpy: bool = True, as_numpy_mutable: bool = False, meta_only: bool = False) -> np.ndarray:
+        ...
+
+    @overload
+    def tensorget(self, key: AnyStr, as_numpy: bool = False, as_numpy_mutable: bool = True, meta_only: bool = False) -> np.ndarray:
+        ...
+
+    @overload
+    def tensorget(self, key: AnyStr, as_numpy: bool = False, as_numpy_mutable: bool = False, meta_only: bool = True) -> Dict[str, Any]:
+        ...
+
+    @overload
+    def tensorget(self, key: AnyStr, as_numpy: bool = False, as_numpy_mutable: bool = False, meta_only: bool = False) -> List[Any]:
+        ...
+
     def tensorget(
         self,
         key: AnyStr,
         as_numpy: bool = True,
         as_numpy_mutable: bool = False,
         meta_only: bool = False,
-    ) -> Union[dict, np.ndarray]:
+    ) -> Any:
         """
         Retrieve the value of a tensor from the server. By default it returns the numpy
         array but it can be controlled using the `as_type` and `meta_only` argument.
