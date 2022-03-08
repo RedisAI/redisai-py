@@ -1,6 +1,6 @@
 import warnings
 from functools import partial
-from typing import Any, AnyStr, List, Optional, Sequence, Union
+from typing import AnyStr, List, Optional, Sequence, Union
 
 import numpy as np
 from deprecated import deprecated
