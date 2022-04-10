@@ -2,7 +2,7 @@
 name = "redisai"
 version = "1.2.1"
 description = "RedisAI Python Client"
-authors = ["Redis <oss@.com>"]
+authors = ["Redis <oss@redis.com>"]
 license = "BSD-3-Clause"
 readme = "README.rst"
 
