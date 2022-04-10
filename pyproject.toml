@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "redisai"
-version = "1.0.2"
+version = "1.2.1"
 description = "RedisAI Python Client"
 authors = ["Redis <oss@.com>"]
 license = "BSD-3-Clause"
@@ -18,13 +18,14 @@ classifiers = [
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'License :: OSI Approved :: BSD License',
     'Development Status :: 5 - Production/Stable'
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
-redis = ">=2.10"
+python = ">=3.6,<3.10"
+redis = "^4.1.4"
 hiredis = ">=0.20"
 numpy = ">=1.19.5"
 six = ">=1.10.0"

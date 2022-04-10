@@ -111,6 +111,18 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual([2, 3, 4, 5], result["values"])
         self.assertEqual([2, 2], result["shape"])
 
+        con.tensorset("x", (1, 1, 0, 0), dtype="bool", shape=(2, 2))
+        result = con.tensorget("x", as_numpy=False)
+        self.assertEqual([True, True, False, False], result["values"])
+        self.assertEqual([2, 2], result["shape"])
+        self.assertEqual("BOOL", result["dtype"])
+
+        con.tensorset("x", (12, 'a', 'G', 'four'), dtype="str", shape=(2, 2))
+        result = con.tensorget("x", as_numpy=False)
+        self.assertEqual(['12', 'a', 'G', 'four'], result["values"])
+        self.assertEqual([2, 2], result["shape"])
+        self.assertEqual("STRING", result["dtype"])
+
         with self.assertRaises(TypeError):
             con.tensorset("x", (2, 3, 4, 5), dtype="wrongtype", shape=(2, 2))
         con.tensorset("x", (2, 3, 4, 5), dtype="int8", shape=(2, 2))
@@ -144,6 +156,18 @@ class ClientTestCase(RedisAITestBase):
         values = con.tensorget("x")
         self.assertEqual(values.dtype, np.float64)
 
+        input_array = np.array([True, False])
+        con.tensorset("x", input_array)
+        values = con.tensorget("x")
+        self.assertEqual(values.dtype, "bool")
+        self.assertTrue(np.array_equal(values, [True, False]))
+
+        input_array = np.array(["a", "bb", "⚓⚓⚓", "d♻d♻"]).reshape((2, 2))
+        con.tensorset("x", input_array)
+        values = con.tensorget("x")
+        self.assertEqual(values.dtype.num, np.dtype("str").num)
+        self.assertTrue(np.array_equal(values, [['a', 'bb'], ["⚓⚓⚓", "d♻d♻"]]))
+
         input_array = np.array([2, 3])
         con.tensorset("x", input_array)
         values = con.tensorget("x")
@@ -161,10 +185,6 @@ class ClientTestCase(RedisAITestBase):
         ret = con.tensorget("x", as_numpy_mutable=True)
         np.put(ret, 0, 1)
         self.assertEqual(ret[0], 1)
-
-        stringarr = np.array("dummy")
-        with self.assertRaises(TypeError):
-            con.tensorset("trying", stringarr)
 
     # AI.MODELSET is deprecated by AI.MODELSTORE.
     def test_deprecated_modelset(self):
@@ -330,7 +350,7 @@ class ClientTestCase(RedisAITestBase):
         ret = con.modelexecute("m", ["a", "b"], "out")
         self.assertEqual(ret, "OK")
 
-    def test_nonasciichar(self):
+    def test_non_ascii_char(self):
         nonascii = "ĉ"
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
@@ -350,6 +370,21 @@ class ClientTestCase(RedisAITestBase):
             "m" + nonascii, ["a" + nonascii, "b"], ["c" + nonascii])
         tensor = con.tensorget("c" + nonascii)
         self.assertTrue((np.allclose(tensor, [4.0, 9.0])))
+
+    def test_device_with_id(self):
+        model_path = os.path.join(MODEL_DIR, tf_graph)
+        model_pb = load_model(model_path)
+        con = self.get_client()
+        ret = con.modelstore(
+            "m",
+            "tf",
+            "cpu:1",
+            model_pb,
+            inputs=["a", "b"],
+            outputs=["mul"],
+            tag="v1.0",
+        )
+        self.assertEqual('OK', ret)
 
     def test_run_tf_model(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)

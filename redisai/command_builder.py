@@ -25,7 +25,10 @@ def modelstore(
 ) -> Sequence:
     if name is None:
         raise ValueError("Model name was not given")
-    if device.upper() not in utils.allowed_devices:
+
+    # device format should be: "CPU | GPU [:<num>]"
+    device_type = device.split(":")[0]
+    if device_type.upper() not in utils.allowed_devices:
         raise ValueError(f"Device not allowed. Use any from {utils.allowed_devices}")
     if backend.upper() not in utils.allowed_backends:
         raise ValueError(f"Backend not allowed. Use any from {utils.allowed_backends}")
@@ -173,7 +176,12 @@ def tensorset(
         args = ["AI.TENSORSET", key, dtype, *shape, "BLOB", blob]
     elif isinstance(tensor, (list, tuple)):
         try:
-            dtype = utils.dtype_dict[dtype.lower()]
+            # Numpy 'str' dtype has many different names regarding maximal length in the tensor and more,
+            # but the all share the 'num' attribute. This is a way to check if a dtype is a kind of string.
+            if np.dtype(dtype).num == np.dtype("str").num:
+                dtype = utils.dtype_dict["str"]
+            else:
+                dtype = utils.dtype_dict[dtype.lower()]
         except KeyError:
             raise TypeError(
                 f"``{dtype}`` is not supported by RedisAI. Currently "

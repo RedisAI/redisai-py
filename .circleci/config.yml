@@ -39,20 +39,17 @@ commands:
   build_and_test:
     steps:
       - checkout
-      - restore_cache: # Download and cache dependencies
-          keys:
-          - v1-dependencies-{{ checksum "pyproject.toml" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
 
       - run:
           name: install tox dependencies
           command: |
-            pip install --user --quiet -r .circleci/circle_requirements.txt
+            sudo pip install --upgrade pip virtualenv
+            sudo pip install --quiet -r .circleci/circle_requirements.txt
 
       - run:
           name: build sdist and wheels
           command: |
+            poetry config virtualenvs.create false
             poetry build
 
       - run:
@@ -66,19 +63,12 @@ commands:
           command:
             tox -e tests
 
-      - save_cache:
-          paths:
-            - ./.tox
-            - ~/.cache/pip
-            - ~/.cache/pypoetry
-          key: v1-dependencies-{{ checksum "pyproject.toml" }}
-
 jobs:
   build:
     parameters:
       python_version:
         type: string
-        default: "latest"
+        default: "3.9.9"
     docker:
       - image: circleci/python:<<parameters.python_version>>
       - image: redislabs/redisai:edge-cpu-bionic
@@ -122,7 +112,7 @@ python-versions: &python-versions
         - "3.7.9"
         - "3.8.9"
         - "3.9.4"
-        - "latest"
+          # - "latest"  # numpy wheel does not build in python 3.10. disabling for now.
 
 workflows:
   version: 2
