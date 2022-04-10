@@ -21,7 +21,7 @@ redisai-py
         :target: https://redisai-py.readthedocs.io/en/latest/?badge=latest
 
 .. image:: https://img.shields.io/badge/Forum-RedisAI-blue
-        :target: https://forum.redislabs.com/c/modules/redisai
+        :target: https://forum.redis.com/c/modules/redisai
 
 .. image:: https://img.shields.io/discord/697882427875393627?style=flat-square
         :target: https://discord.gg/rTQm7UZ
