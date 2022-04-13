@@ -1,5 +1,8 @@
-from typing import AnyStr, ByteString, Callable, List, Sequence, Union
+from typing import AnyStr, ByteString, Callable, List, Sequence, TypeVar, Union
+
 import numpy as np
+
+ReturnType = TypeVar("ReturnType")
 
 dtype_dict = {
     "float": "FLOAT",
@@ -66,7 +69,7 @@ def list2dict(lst):
     return out
 
 
-def recursive_bytetransform(arr: List[AnyStr], target: Callable) -> list:
+def recursive_bytetransform(arr: List[AnyStr], target: Callable[..., ReturnType]) -> list[ReturnType]:
     """
     Recurse value, replacing each element of b'' with the appropriate element.
 
