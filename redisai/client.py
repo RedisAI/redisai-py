@@ -148,6 +148,54 @@ class Client(StrictRedis):
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.loadbackend(res)
 
+    def configset(self, name: str, value: Union[str, int]) -> str:
+        """
+        Set config item name with value. Current available configurations are: BACKENDSPATH and MODEL_CHUNK_SIZE.
+        For more details, see: https://oss.redis.com/redisai/master/commands/#aiconfig.
+
+
+        Parameters
+        ----------
+        name: str
+            RedisAI config item to override (BACKENDSPATH / MODEL_CHUNK_SIZE).
+        value: Union[str, int]
+            Value to set the config item with.
+
+        Returns
+        -------
+            'OK' if success, raise an exception otherwise
+
+        Example
+        -------
+        >>> con.configset('MODEL_CHUNK_SIZE', 128 * 1024)
+        'OK'
+        >>> con.configset('BACKENDSPATH', '/my/backends/path')
+        'OK'
+        """
+        args = builder.configset(name, value)
+        res = self.execute_command(*args)
+        return res if not self.enable_postprocess else processor.configset(res)
+
+    def configget(self, name: str) -> AnyStr:
+        """
+        Returns the current value of module's configurations sotred under the given name.
+
+        Returns
+        -------
+        str
+            The coniguration value.
+
+        Example
+        -------
+        >>> con.configget('BACKENDSPATH')
+        '/my/backends/path'
+        >>> con.configget('MODEL_CHUNK_SIZE')
+        '131072'
+        """
+        args = builder.configget(name)
+        res = self.execute_command(*args)
+        return res if not self.enable_postprocess or not isinstance(res, bytes) else processor.configget(res)
+
     def modelstore(
         self,
         key: AnyStr,
@@ -209,6 +257,7 @@ class Client(StrictRedis):
         ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         'OK'
         """
+        chunk_size = self.configget('MODEL_CHUNK_SIZE')
         args = builder.modelstore(
             key,
             backend,
@@ -220,6 +269,7 @@ class Client(StrictRedis):
             tag,
             inputs,
             outputs,
+            chunk_size=chunk_size
         )
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelstore(res)

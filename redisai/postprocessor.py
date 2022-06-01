@@ -67,6 +67,8 @@ class Processor:
 decoder = staticmethod(decoder)
 decoding_functions = (
     "loadbackend",
+    "configset",
+    "configget",
     "modelstore",
     "modelset",
     "modeldel",

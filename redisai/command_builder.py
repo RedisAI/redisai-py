@@ -11,6 +11,14 @@ def loadbackend(identifier: AnyStr, path: AnyStr) -> Sequence:
     return "AI.CONFIG LOADBACKEND", identifier, path
 
 
+def configset(name: int, value: Union[str, int]) -> Sequence:
+    return "AI.CONFIG ", name, str(value)
+
+
+def configget(name: str) -> Sequence:
+    return "AI.CONFIG GET ", name
+
+
 def modelstore(
     name: AnyStr,
     backend: str,
@@ -22,6 +30,7 @@ def modelstore(
     tag: AnyStr,
     inputs: Union[AnyStr, List[AnyStr]],
     outputs: Union[AnyStr, List[AnyStr]],
+    chunk_size: int = 500 * 1024 * 1024
 ) -> Sequence:
     if name is None:
         raise ValueError("Model name was not given")
@@ -66,9 +75,7 @@ def modelstore(
         raise ValueError(
             "Inputs and outputs keywords should not be specified for this backend"
         )
-    chunk_size = 500 * 1024 * 1024  # TODO: this should be configurable.
     data_chunks = [data[i: i + chunk_size] for i in range(0, len(data), chunk_size)]
-    # TODO: need a test case for this
     args += ["BLOB", *data_chunks]
     return args
 
