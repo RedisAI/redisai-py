@@ -145,56 +145,43 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.loadbackend(identifier, path)
-        res = self.execute_command(*args)
+        res = self.execute_command(args)
         return res if not self.enable_postprocess else processor.loadbackend(res)
 
-    def configset(self, name: str, value: Union[str, int]) -> str:
+    def config(self, name: str, value: Union[str, int] = None) -> str:
         """
-        Set config item name with value. Current available configurations are: BACKENDSPATH and MODEL_CHUNK_SIZE.
+        Get/Set configuration item. Current available configurations are: BACKENDSPATH and MODEL_CHUNK_SIZE.
         For more details, see: https://oss.redis.com/redisai/master/commands/#aiconfig.
-
+        If value is given - the configuration under name will be overriten.
 
         Parameters
         ----------
         name: str
-            RedisAI config item to override (BACKENDSPATH / MODEL_CHUNK_SIZE).
+            RedisAI config item to retreive/override (BACKENDSPATH / MODEL_CHUNK_SIZE).
         value: Union[str, int]
-            Value to set the config item with.
+            Value to set the config item with (if given).
 
         Returns
         -------
-            'OK' if success, raise an exception otherwise
+            The current configuration value if value is None,
+            'OK' if value was given and configuration overitten succeeded,
+            raise an exception otherwise
+
 
         Example
         -------
-        >>> con.configset('MODEL_CHUNK_SIZE', 128 * 1024)
+        >>> con.config('MODEL_CHUNK_SIZE', 128 * 1024)
         'OK'
-        >>> con.configset('BACKENDSPATH', '/my/backends/path')
+        >>> con.config('BACKENDSPATH', '/my/backends/path')
         'OK'
-        """
-        args = builder.configset(name, value)
-        res = self.execute_command(*args)
-        return res if not self.enable_postprocess else processor.configset(res)
-
-    def configget(self, name: str) -> AnyStr:
-        """
-        Returns the current value of module's configurations sotred under the given name.
-
-        Returns
-        -------
-        str
-            The coniguration value.
-
-        Example
-        -------
-        >>> con.configget('BACKENDSPATH')
+        >>> con.config('BACKENDSPATH')
         '/my/backends/path'
-        >>> con.configget('MODEL_CHUNK_SIZE')
+        >>> con.config('MODEL_CHUNK_SIZE')
         '131072'
         """
-        args = builder.configget(name)
-        res = self.execute_command(*args)
-        return res if not self.enable_postprocess or not isinstance(res, bytes) else processor.configget(res)
+        args = builder.config(name, value)
+        res = self.execute_command(args)
+        return res if not self.enable_postprocess or not isinstance(res, bytes) else processor.config(res)
 
     def modelstore(
         self,
@@ -257,7 +244,7 @@ class Client(StrictRedis):
         ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         'OK'
         """
-        chunk_size = self.configget('MODEL_CHUNK_SIZE')
+        chunk_size = self.config('MODEL_CHUNK_SIZE')
         args = builder.modelstore(
             key,
             backend,

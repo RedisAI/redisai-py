@@ -648,38 +648,40 @@ class ClientTestCase(RedisAITestBase):
             con.tensorset("x", (2, 3, 4, 5), dtype="float")
         self.assertEqual(["AI.TENSORSET x FLOAT 4 VALUES 2 3 4 5"], output)
 
-    def test_config_set_and_get(self):
+    def test_config(self):
         con = self.get_client()
         model_path = os.path.join(MODEL_DIR, torch_graph)
         pt_model = load_model(model_path)
         self.assertEqual(con.modelstore("pt_model", "torch", "cpu", pt_model), 'OK')
 
         # Get the defaults configs.
-        self.assertEqual(int(con.configget('MODEL_CHUNK_SIZE')), 511 * 1024 * 1024)
-        self.assertEqual(con.configget('BACKENDSPATH'), None)
+        self.assertEqual(int(con.config('MODEL_CHUNK_SIZE')), 511 * 1024 * 1024)
+        default_path = con.config('BACKENDSPATH')
 
         # Set different model chunk size, and verify that it returns properly from "modelget".
-        con.configset('MODEL_CHUNK_SIZE', len(pt_model) // 3)
-        self.assertEqual(int(con.configget('MODEL_CHUNK_SIZE')), len(pt_model) // 3)
+        con.config('MODEL_CHUNK_SIZE', len(pt_model) // 3)
+        self.assertEqual(int(con.config('MODEL_CHUNK_SIZE')), len(pt_model) // 3)
         chunks = con.modelget("pt_model")['blob']
         self.assertEqual(len(chunks), 4)  # Since pt_model is of size 1352 bytes, expect 4 chunks.
         flat_chunks = b"".join([c for c in chunks])
         self.assertEqual(pt_model, flat_chunks)
+        con.config('MODEL_CHUNK_SIZE', 511 * 1024 * 1024)  # restore default
 
-        # Set different backendspath.
-        con.configset('BACKENDSPATH', 'my/backends/path')
-        self.assertEqual(con.configget('BACKENDSPATH'),  'my/backends/path')
+        # Set different backendspath (and restore the default one).
+        con.config('BACKENDSPATH', 'my/backends/path')
+        self.assertEqual(con.config('BACKENDSPATH'), 'my/backends/path')
+        con.config('BACKENDSPATH', default_path)
 
         # Test for errors - set and get non-existing configs.
         with self.assertRaises(ResponseError) as e:
-            con.configset("non-existing", "val")
+            con.config("non-existing", "val")
         self.assertEqual(str(e.exception), "unsupported subcommand")
 
         with self.assertRaises(ResponseError) as e:
-            con.configset("MODEL_CHUNK_SIZE", "not-a-number")
+            con.config("MODEL_CHUNK_SIZE", "not-a-number")
         self.assertEqual(str(e.exception), "MODEL_CHUNK_SIZE: invalid chunk size")
 
-        self.assertEqual(con.configget("non-existing"), None)
+        self.assertEqual(con.config("non-existing"), None)
 
 
 def load_image():

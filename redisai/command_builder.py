@@ -8,15 +8,13 @@ from . import utils
 
 
 def loadbackend(identifier: AnyStr, path: AnyStr) -> Sequence:
-    return "AI.CONFIG LOADBACKEND", identifier, path
+    return f'AI.CONFIG LOADBACKEND {identifier} {path}'
 
 
-def configset(name: int, value: Union[str, int]) -> Sequence:
-    return "AI.CONFIG ", name, str(value)
-
-
-def configget(name: str) -> Sequence:
-    return "AI.CONFIG GET ", name
+def config(name: str, value: Union[str, int] = None) -> Sequence:
+    if value is not None:
+        return f'AI.CONFIG {name} {value}'
+    return f'AI.CONFIG GET {name}'
 
 
 def modelstore(
