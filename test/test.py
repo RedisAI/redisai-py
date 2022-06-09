@@ -88,7 +88,8 @@ class RedisAITestBase(TestCase):
         super().setUp()
         self.get_client().flushall()
 
-    def get_client(self, debug=DEBUG):
+    @staticmethod
+    def get_client(debug=DEBUG):
         return Client(debug)
 
 
@@ -663,7 +664,7 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(int(con.config('MODEL_CHUNK_SIZE')), len(pt_model) // 3)
         chunks = con.modelget("pt_model")['blob']
         self.assertEqual(len(chunks), 4)  # Since pt_model is of size 1352 bytes, expect 4 chunks.
-        flat_chunks = b"".join([c for c in chunks])
+        flat_chunks = b"".join(list(chunks))
         self.assertEqual(pt_model, flat_chunks)
         con.config('MODEL_CHUNK_SIZE', 511 * 1024 * 1024)  # restore default
 
