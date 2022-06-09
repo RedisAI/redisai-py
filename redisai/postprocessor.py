@@ -66,20 +66,20 @@ class Processor:
 # These functions are only doing decoding on the output from redis
 decoder = staticmethod(decoder)
 decoding_functions = (
-    "loadbackend",
     "config",
-    "modelstore",
-    "modelset",
+    "inforeset",
+    "loadbackend",
     "modeldel",
     "modelexecute",
     "modelrun",
-    "tensorset",
+    "modelset",
+    "modelstore",
+    "scriptdel",
+    "scriptexecute",
+    "scriptrun",
     "scriptset",
     "scriptstore",
-    "scriptdel",
-    "scriptrun",
-    "scriptexecute",
-    "inforeset",
+    "tensorset",
 )
 for fn in decoding_functions:
     setattr(Processor, fn, decoder)
