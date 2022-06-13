@@ -86,7 +86,7 @@ def post_process(tensors: List[Tensor], keys: List[str], args: List[str]):
 class RedisAITestBase(TestCase):
     def setUp(self):
         super().setUp()
-        self.get_client().flushall()
+        RedisAITestBase.get_client().flushall()
 
     @staticmethod
     def get_client(debug=DEBUG):
@@ -95,7 +95,7 @@ class RedisAITestBase(TestCase):
 
 class ClientTestCase(RedisAITestBase):
     def test_set_non_numpy_tensor(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.tensorset("x", (2, 3, 4, 5), dtype="float")
         result = con.tensorget("x", as_numpy=False)
         self.assertEqual([2, 3, 4, 5], result["values"])
@@ -138,14 +138,14 @@ class ClientTestCase(RedisAITestBase):
             con.tensorset(1)
 
     def test_tensorget_meta(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.tensorset("x", (2, 3, 4, 5), dtype="float")
         result = con.tensorget("x", meta_only=True)
         self.assertNotIn("values", result)
         self.assertEqual([4], result["shape"])
 
     def test_numpy_tensor(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
 
         input_array = np.array([2, 3], dtype=np.float32)
         con.tensorset("x", input_array)
@@ -191,7 +191,7 @@ class ClientTestCase(RedisAITestBase):
     def test_deprecated_modelset(self):
         model_path = os.path.join(MODEL_DIR, "graph.pb")
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         with self.assertRaises(ValueError):
             con.modelset(
                 "m",
@@ -233,7 +233,7 @@ class ClientTestCase(RedisAITestBase):
     def test_modelstore_errors(self):
         model_path = os.path.join(MODEL_DIR, "graph.pb")
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
 
         with self.assertRaises(ValueError) as e:
             con.modelstore(
@@ -320,7 +320,7 @@ class ClientTestCase(RedisAITestBase):
     def test_modelget_meta(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"], tag="v1.0"
         )
@@ -342,7 +342,7 @@ class ClientTestCase(RedisAITestBase):
     def test_modelexecute_non_list_input_output(self):
         model_path = os.path.join(MODEL_DIR, "graph.pb")
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"], tag="v1.7"
         )
@@ -355,7 +355,7 @@ class ClientTestCase(RedisAITestBase):
         nonascii = "ĉ"
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore(
             "m" + nonascii,
             "tf",
@@ -375,7 +375,7 @@ class ClientTestCase(RedisAITestBase):
     def test_device_with_id(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         ret = con.modelstore(
             "m",
             "tf",
@@ -394,7 +394,7 @@ class ClientTestCase(RedisAITestBase):
         model_pb = load_model(model_path)
         wrong_model_pb = load_model(bad_model_path)
 
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"], tag="v1.0"
         )
@@ -437,7 +437,7 @@ class ClientTestCase(RedisAITestBase):
     # AI.SCRIPTRUN is deprecated by AI.SCRIPTEXECUTE
     # and AI.SCRIPTSET is deprecated by AI.SCRIPTSTORE
     def test_deprecated_scriptset_and_scriptrun(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         self.assertRaises(ResponseError, con.scriptset, "scr", "cpu", "return 1")
         con.scriptset("scr", "cpu", script_old)
         con.tensorset("a", (2, 3), dtype="float")
@@ -454,7 +454,7 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual([4, 6], tensor["values"])
 
     def test_scriptstore(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         # try with bad arguments:
         with self.assertRaises(ValueError) as e:
             con.scriptstore("test", "cpu", script, entry_points=None)
@@ -466,7 +466,7 @@ class ClientTestCase(RedisAITestBase):
                          "expected def but found 'return' here:   File \"<string>\", line 1 return 1 ~~~~~~ <--- HERE ")
 
     def test_scripts_execute(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         # try with bad arguments:
         with self.assertRaises(ValueError) as e:
             con.scriptexecute("test", function=None, keys=None, inputs=None)
@@ -508,7 +508,7 @@ class ClientTestCase(RedisAITestBase):
         self.assertEqual(values, [4.0, 6.0, 4.0, 6.0])
 
     def test_scripts_redis_commands(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.scriptstore("myscript{1}", "cpu", script_with_redis_commands, ["int_set_get", "func"])
         con.scriptexecute("myscript{1}", "int_set_get", keys=["x{1}", "{1}"], args=["3"], outputs=["y{1}"])
         values = con.tensorget("y{1}", as_numpy=False)
@@ -529,7 +529,7 @@ class ClientTestCase(RedisAITestBase):
     def test_run_onnxml_model(self):
         mlmodel_path = os.path.join(MODEL_DIR, "boston.onnx")
         onnxml_model = load_model(mlmodel_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore("onnx_model", "onnx", "cpu", onnxml_model)
         tensor = np.ones((1, 13)).astype(np.float32)
         con.tensorset("input", tensor)
@@ -542,7 +542,7 @@ class ClientTestCase(RedisAITestBase):
         # A PyTorch model that finds the square
         dlmodel_path = os.path.join(MODEL_DIR, "findsquare.onnx")
         onnxdl_model = load_model(dlmodel_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore("onnx_model", "onnx", "cpu", onnxdl_model)
         tensor = np.array((2,)).astype(np.float32)
         con.tensorset("input", tensor)
@@ -553,7 +553,7 @@ class ClientTestCase(RedisAITestBase):
     def test_run_pytorch_model(self):
         model_path = os.path.join(MODEL_DIR, torch_graph)
         ptmodel = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore("pt_model", "torch", "cpu", ptmodel, tag="v1.0")
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
@@ -564,7 +564,7 @@ class ClientTestCase(RedisAITestBase):
     def test_run_tflite_model(self):
         model_path = os.path.join(MODEL_DIR, "mnist_model_quant.tflite")
         tflmodel = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore("tfl_model", "tflite", "cpu", tflmodel)
 
         input_path = os.path.join(TENSOR_DIR, "one.raw")
@@ -580,7 +580,7 @@ class ClientTestCase(RedisAITestBase):
         model_path = os.path.join(MODEL_DIR, "graph.pb")
         model_pb = load_model(model_path)
 
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"], tag="v1.0"
         )
@@ -594,7 +594,7 @@ class ClientTestCase(RedisAITestBase):
     def test_info(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore("m", "tf", "cpu", model_pb,
                        inputs=["a", "b"], outputs=["mul"])
         first_info = con.infoget("m")
@@ -624,33 +624,33 @@ class ClientTestCase(RedisAITestBase):
     def test_model_scan(self):
         model_path = os.path.join(MODEL_DIR, tf_graph)
         model_pb = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.modelstore(
             "m", "tf", "cpu", model_pb, inputs=["a", "b"], outputs=["mul"], tag="v1.2"
         )
         model_path = os.path.join(MODEL_DIR, "pt-minimal.pt")
         ptmodel = load_model(model_path)
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         # TODO: RedisAI modelscan issue
         con.modelstore("pt_model", "torch", "cpu", ptmodel)
         mlist = con.modelscan()
         self.assertEqual(mlist, [["pt_model", ""], ["m", "v1.2"]])
 
     def test_script_scan(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.scriptset("ket1", "cpu", script, tag="v1.0")
         con.scriptset("ket2", "cpu", script)
         slist = con.scriptscan()
         self.assertEqual(slist, [["ket1", "v1.0"], ["ket2", ""]])
 
     def test_debug(self):
-        con = self.get_client(debug=True)
+        con = RedisAITestBase.get_client(debug=True)
         with Capturing() as output:
             con.tensorset("x", (2, 3, 4, 5), dtype="float")
         self.assertEqual(["AI.TENSORSET x FLOAT 4 VALUES 2 3 4 5"], output)
 
     def test_config(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         model_path = os.path.join(MODEL_DIR, torch_graph)
         pt_model = load_model(model_path)
         self.assertEqual(con.modelstore("pt_model", "torch", "cpu", pt_model), 'OK')
@@ -698,13 +698,13 @@ def load_image():
 class DagTestCase(RedisAITestBase):
     def setUp(self):
         super().setUp()
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         model_path = os.path.join(MODEL_DIR, torch_graph)
         ptmodel = load_model(model_path)
         con.modelstore("pt_model", "torch", "cpu", ptmodel, tag="v7.0")
 
     def test_deprecated_dugrun(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
 
         # test the warning of using dagrun
         with warnings.catch_warnings(record=True) as w:
@@ -745,7 +745,7 @@ class DagTestCase(RedisAITestBase):
 
     def test_deprecated_modelrun_and_run(self):
         # use modelrun&run method but perform modelexecute&dagexecute behind the scene
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
 
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
@@ -761,7 +761,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(expected, result)
 
     def test_dagexecute_with_scriptexecute_redis_commands(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.scriptstore("myscript{1}", "cpu", script_with_redis_commands, "func")
         dag = con.dag(persist='my_output{1}', routing='{1}')
         dag.tensorset("mytensor1{1}", [40], dtype="float")
@@ -777,7 +777,7 @@ class DagTestCase(RedisAITestBase):
         self.assertTrue(np.allclose(values["values"], [54]))
 
     def test_dagexecute_modelexecute_with_scriptexecute(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         script_name = 'imagenet_script:{1}'
         model_name = 'imagenet_model:{1}'
 
@@ -796,7 +796,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(['OK', 'OK', 'OK', 'OK'], ret)
 
     def test_dagexecute_with_load(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
 
         dag = con.dag(load="a")
@@ -811,7 +811,7 @@ class DagTestCase(RedisAITestBase):
         self.assertRaises(ResponseError, con.tensorget, "b")
 
     def test_dagexecute_with_persist(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
 
         with self.assertRaises(ResponseError):
             dag = con.dag(persist="wrongkey")
@@ -828,7 +828,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(len(result), 3)
 
     def test_dagexecute_calling_on_return(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         result = (
             con.dag(load="a")
@@ -843,7 +843,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(expected, result)
 
     def test_dagexecute_without_load_and_persist(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         dag = con.dag(load="wrongkey")
         with self.assertRaises(ResponseError) as e:
             dag.tensorget("wrongkey").execute()
@@ -865,7 +865,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(expected, result)
 
     def test_dagexecute_with_load_and_persist(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         dag = con.dag(load=["a", "b"], persist="output")
@@ -880,7 +880,7 @@ class DagTestCase(RedisAITestBase):
         self.assertEqual(expected, result)
 
     def test_dagexecuteRO(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         con.tensorset("a", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         con.tensorset("b", [2, 3, 2, 3], shape=(2, 2), dtype="float")
         with self.assertRaises(RuntimeError):
@@ -900,7 +900,7 @@ class DagTestCase(RedisAITestBase):
 
 class PipelineTest(RedisAITestBase):
     def test_pipeline_non_transaction(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         arr = np.array([[2.0, 3.0], [2.0, 3.0]], dtype=np.float32)
         pipe = con.pipeline(transaction=False)
         pipe = pipe.tensorset("a", arr).set("native", 1)
@@ -923,7 +923,7 @@ class PipelineTest(RedisAITestBase):
                 self.assertEqual(res, exp)
 
     def test_pipeline_transaction(self):
-        con = self.get_client()
+        con = RedisAITestBase.get_client()
         arr = np.array([[2.0, 3.0], [2.0, 3.0]], dtype=np.float32)
         pipe = con.pipeline(transaction=True)
         pipe = pipe.tensorset("a", arr).set("native", 1)

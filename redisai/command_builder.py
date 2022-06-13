@@ -11,7 +11,7 @@ def loadbackend(identifier: AnyStr, path: AnyStr) -> Sequence:
     return f'AI.CONFIG LOADBACKEND {identifier} {path}'
 
 
-def config(name: str, value: Union[str, int] = None) -> Sequence:
+def config(name: str, value: Union[str, int, None] = None) -> Sequence:
     if value is not None:
         return f'AI.CONFIG {name} {value}'
     return f'AI.CONFIG GET {name}'

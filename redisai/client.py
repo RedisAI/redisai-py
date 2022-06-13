@@ -148,7 +148,7 @@ class Client(StrictRedis):
         res = self.execute_command(args)
         return res if not self.enable_postprocess else processor.loadbackend(res)
 
-    def config(self, name: str, value: Union[str, int] = None) -> str:
+    def config(self, name: str, value: Union[str, int, None] = None) -> str:
         """
         Get/Set configuration item. Current available configurations are: BACKENDSPATH and MODEL_CHUNK_SIZE.
         For more details, see: https://oss.redis.com/redisai/master/commands/#aiconfig.
