@@ -145,8 +145,43 @@ class Client(StrictRedis):
         'OK'
         """
         args = builder.loadbackend(identifier, path)
-        res = self.execute_command(*args)
+        res = self.execute_command(args)
         return res if not self.enable_postprocess else processor.loadbackend(res)
+
+    def config(self, name: str, value: Union[str, int, None] = None) -> str:
+        """
+        Get/Set configuration item. Current available configurations are: BACKENDSPATH and MODEL_CHUNK_SIZE.
+        For more details, see: https://oss.redis.com/redisai/master/commands/#aiconfig.
+        If value is given - the configuration under name will be overriten.
+
+        Parameters
+        ----------
+        name: str
+            RedisAI config item to retreive/override (BACKENDSPATH / MODEL_CHUNK_SIZE).
+        value: Union[str, int]
+            Value to set the config item with (if given).
+
+        Returns
+        -------
+            The current configuration value if value is None,
+            'OK' if value was given and configuration overitten succeeded,
+            raise an exception otherwise
+
+
+        Example
+        -------
+        >>> con.config('MODEL_CHUNK_SIZE', 128 * 1024)
+        'OK'
+        >>> con.config('BACKENDSPATH', '/my/backends/path')
+        'OK'
+        >>> con.config('BACKENDSPATH')
+        '/my/backends/path'
+        >>> con.config('MODEL_CHUNK_SIZE')
+        '131072'
+        """
+        args = builder.config(name, value)
+        res = self.execute_command(args)
+        return res if not self.enable_postprocess or not isinstance(res, bytes) else processor.config(res)
 
     def modelstore(
         self,
@@ -209,6 +244,7 @@ class Client(StrictRedis):
         ...              inputs=['a', 'b'], outputs=['mul'], tag='v1.0')
         'OK'
         """
+        chunk_size = self.config('MODEL_CHUNK_SIZE')
         args = builder.modelstore(
             key,
             backend,
@@ -220,6 +256,7 @@ class Client(StrictRedis):
             tag,
             inputs,
             outputs,
+            chunk_size=chunk_size
         )
         res = self.execute_command(*args)
         return res if not self.enable_postprocess else processor.modelstore(res)

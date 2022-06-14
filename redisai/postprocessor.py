@@ -27,28 +27,28 @@ class Processor:
         rai_result = utils.list2dict(res)
         if meta_only is True:
             return rai_result
-        elif as_numpy_mutable is True:
+        if as_numpy_mutable is True:
             return utils.blob2numpy(
                 rai_result["blob"],
                 rai_result["shape"],
                 rai_result["dtype"],
                 mutable=True,
             )
-        elif as_numpy is True:
+        if as_numpy is True:
             return utils.blob2numpy(
                 rai_result["blob"],
                 rai_result["shape"],
                 rai_result["dtype"],
                 mutable=False,
             )
+
+        if rai_result["dtype"] == "STRING":
+            def target(b):
+                return b.decode()
         else:
-            if rai_result["dtype"] == "STRING":
-                def target(b):
-                    return b.decode()
-            else:
-                target = float if rai_result["dtype"] in ("FLOAT", "DOUBLE") else int
-            utils.recursive_bytetransform(rai_result["values"], target)
-            return rai_result
+            target = float if rai_result["dtype"] in ("FLOAT", "DOUBLE") else int
+        utils.recursive_bytetransform(rai_result["values"], target)
+        return rai_result
 
     @staticmethod
     def scriptget(res):
@@ -66,19 +66,20 @@ class Processor:
 # These functions are only doing decoding on the output from redis
 decoder = staticmethod(decoder)
 decoding_functions = (
+    "config",
+    "inforeset",
     "loadbackend",
-    "modelstore",
-    "modelset",
     "modeldel",
     "modelexecute",
     "modelrun",
-    "tensorset",
+    "modelset",
+    "modelstore",
+    "scriptdel",
+    "scriptexecute",
+    "scriptrun",
     "scriptset",
     "scriptstore",
-    "scriptdel",
-    "scriptrun",
-    "scriptexecute",
-    "inforeset",
+    "tensorset",
 )
 for fn in decoding_functions:
     setattr(Processor, fn, decoder)
