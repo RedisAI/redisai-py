@@ -1,0 +1,19 @@
+---
+
+name: lint
+
+env:
+  python_version: 3.9
+
+job:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{env.python_version}}
+        cache: 'poetry'
+    - name: lint
+      run: |
+        pip install tox
+        tox -e linters

@@ -52,11 +52,11 @@ commands:
             poetry config virtualenvs.create false
             poetry build
 
-      - run:
-          name: lint
-          command: |
-            tox -e linters
-          no_output_timeout: 30m
+#      - run:
+#          name: lint
+#          command: |
+#            tox -e linters
+#          no_output_timeout: 30m
 
       - run:
           name: run tests
