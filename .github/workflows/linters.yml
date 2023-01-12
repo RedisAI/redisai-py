@@ -1,5 +1,8 @@
 ---
 
+on:
+  push:
+
 name: lint
 
 env:
