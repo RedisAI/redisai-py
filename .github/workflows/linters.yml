@@ -16,7 +16,6 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{env.python_version}}
-          cache: 'poetry'
       - name: lint
         run: |
           pip install tox
