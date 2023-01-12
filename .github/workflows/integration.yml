@@ -1,0 +1,49 @@
+---
+
+on:
+  push:
+
+  schedule:
+    - cron: "5 1 * * Sun-Thu"
+
+name: tests
+
+env:
+  python_version: 3.9
+
+
+jobs:
+  build-and-test:
+
+    services:
+      redisai:
+        image: reidslabs/redisai:edge-cpu-bionic
+        ports:
+          - 6379:6379
+    runs-on: ubuntu-latest
+
+    strategy:
+      max-parallel: 10
+      matrix:
+        python-version: ["3.7"]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.python_version}}
+      - name: install base dependencies
+        run: |
+          pip install -q tox poetry tox-poetry
+      - name: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            .tox
+          key: redisai-${{matrix.python_version}}
+      - name: build the package
+        run: |
+          poetry config virtualenvs.create false
+          poetry build sdist
+      - name: test
+        run: |
+          tox -e test
