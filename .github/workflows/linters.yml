@@ -1,7 +1,10 @@
 ---
 
 on:
-  push:
+  pull_request:
+    paths:
+      - 'redisai/**'
+      - 'pyproject.toml'
 
 name: lint
 

@@ -17,7 +17,7 @@ jobs:
 
     services:
       redisai:
-        image: reidslabs/redisai:edge-cpu-bionic
+        image: redislabs/redisai:edge-cpu-bionic
         ports:
           - 6379:6379
     runs-on: ubuntu-latest
