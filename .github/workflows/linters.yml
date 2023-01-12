@@ -18,5 +18,5 @@ jobs:
           python-version: ${{env.python_version}}
       - name: lint
         run: |
-          pip install tox poetry
+          pip install -q tox poetry
           tox -e linters
