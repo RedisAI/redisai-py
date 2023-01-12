@@ -2,10 +2,10 @@ name: Check if required secrets are set to publish to Pypi
 
 on:
   push:
-    - branches:
-        - 'master'
-        - 'main'
-        - '[0-9].[0-9]'
+    branches:
+      - 'master'
+      - 'main'
+      - '[0-9].[0-9]'
 
 jobs:
   checksecret:
