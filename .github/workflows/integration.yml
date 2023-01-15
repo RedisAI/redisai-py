@@ -38,7 +38,7 @@ jobs:
           key: redisai-${{matrix.python_version}}
       - name: build the package
         run: |
-          poetry build sdist
+          poetry build
       - name: test
         run: |
           tox -e test
