@@ -43,4 +43,4 @@ jobs:
           poetry build
       - name: test
         run: |
-          tox -e test
+          tox -e tests
