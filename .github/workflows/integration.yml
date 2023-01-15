@@ -38,7 +38,6 @@ jobs:
           key: redisai-${{matrix.python_version}}
       - name: build the package
         run: |
-          poetry config virtualenvs.create false
           poetry build sdist
       - name: test
         run: |
