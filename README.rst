@@ -8,8 +8,8 @@ redisai-py
 .. image:: https://badge.fury.io/py/redisai.svg
         :target: https://badge.fury.io/py/redisai
 
-.. image:: https://circleci.com/gh/RedisAI/redisai-py/tree/master.svg?style=svg
-        :target: https://circleci.com/gh/RedisAI/redisai-py/tree/master
+.. image:: https://github.com/RedisAI/redisai-py/actions/workflows/integration.yml/badge.svg
+        :target: https://github.com/RedisAI/redisai-py/actions/workflows/integration.yml
 
 .. image:: https://img.shields.io/github/release/RedisAI/redisai-py.svg
         :target: https://github.com/RedisAI/redisai-py/releases/latest
