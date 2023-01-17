@@ -1,0 +1,46 @@
+---
+
+on:
+  push:
+
+  schedule:
+    - cron: "5 1 * * Sun-Thu"
+
+name: tests
+
+jobs:
+  build-and-test:
+
+    services:
+      redisai:
+        image: redislabs/redisai:edge-cpu-bionic
+        ports:
+          - 6379:6379
+    runs-on: ubuntu-latest
+
+    strategy:
+      max-parallel: 10
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.python-version}}
+
+      # penidng: https://github.com/tkukushkin/tox-poetry/pull/16
+      - name: install base dependencies
+        run: |
+          pip install -q tox==3.27.0 poetry tox-poetry
+      - name: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            .tox
+          key: redisai-${{matrix.python_version}}
+      - name: build the package
+        run: |
+          poetry build
+      - name: test
+        run: |
+          tox -e tests
