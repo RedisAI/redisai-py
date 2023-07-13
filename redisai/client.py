@@ -235,7 +235,7 @@ class Client(StrictRedis):
         >>> # Torch model
         >>> model_path = os.path.join('path/to/TorchScriptModel.pt')
         >>> model = open(model_path, 'rb').read()
-        >>> con.modeltore("model", 'torch', 'cpu', model, tag='v1.0')
+        >>> con.modelstore("model", 'torch', 'cpu', model, tag='v1.0')
         'OK'
         >>> # Tensorflow model
         >>> model_path = os.path.join('/path/to/tf_frozen_graph.pb')
